@@ -227,6 +227,7 @@ textarea { resize:vertical; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 ::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#2a2a2a}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -374,7 +375,91 @@ textarea { resize:vertical; }
       <div class="card"><div class="card-title">Recent Entries</div><div id="recentLogs"></div></div>
     </div>
     <div id="cProgress" class="tab-panel">
+      <!-- Stat boxes -->
       <div class="stat-grid" id="cStatGrid"></div>
+
+      <!-- MEASUREMENTS LOGGER -->
+      <div class="card">
+        <div class="card-title">📏 Log Body Measurements</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div class="form-group" style="margin:0">
+            <label>Weight (kg)</label>
+            <input type="number" id="mWeight" placeholder="75.5" step="0.1">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Waist (cm)</label>
+            <input type="number" id="mWaist" placeholder="82" step="0.5">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Chest (cm)</label>
+            <input type="number" id="mChest" placeholder="95" step="0.5">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Hips (cm)</label>
+            <input type="number" id="mHips" placeholder="90" step="0.5">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Arms (cm)</label>
+            <input type="number" id="mArms" placeholder="35" step="0.5">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Thighs (cm)</label>
+            <input type="number" id="mThighs" placeholder="55" step="0.5">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Body Fat %</label>
+            <input type="number" id="mBodyFat" placeholder="18" step="0.5">
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <button class="btn btn-primary btn-full" onclick="window.logMeasurements()">Save Entry</button>
+          </div>
+        </div>
+        <div id="measureSuccess" class="alert alert-success hidden">✓ Measurements saved!</div>
+        <!-- Measurements chart -->
+        <div style="margin-top:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Progress Chart</div>
+            <select id="measureSelect" onchange="window.renderMeasureChart()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;font-size:12px">
+              <option value="weight">Weight (kg)</option>
+              <option value="waist">Waist (cm)</option>
+              <option value="chest">Chest (cm)</option>
+              <option value="hips">Hips (cm)</option>
+              <option value="arms">Arms (cm)</option>
+              <option value="thighs">Thighs (cm)</option>
+              <option value="bodyFat">Body Fat %</option>
+            </select>
+          </div>
+          <canvas id="measureChart" height="130"></canvas>
+          <div id="measureEmpty" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Log your first measurements above to see your progress graph!</div>
+        </div>
+        <!-- Latest vs First comparison -->
+        <div id="measureComparison" style="margin-top:16px"></div>
+      </div>
+
+      <!-- Exercise strength chart -->
+      <div class="card">
+        <div class="card-title">
+          <span>💪 Strength Progress</span>
+          <select id="exerciseSelect" onchange="window.renderStrengthChart()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;font-size:12px">
+            <option value="">Select exercise...</option>
+          </select>
+        </div>
+        <canvas id="strengthChart" height="120"></canvas>
+        <div id="strengthEmpty" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Select an exercise above to see your progress chart.</div>
+      </div>
+      <!-- Volume chart -->
+      <div class="card">
+        <div class="card-title">📈 Weekly Training Volume</div>
+        <canvas id="volumeChart" height="120"></canvas>
+        <div id="volumeEmpty" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Log workouts to see your weekly volume.</div>
+      </div>
+      <!-- Macro trend chart -->
+      <div class="card">
+        <div class="card-title">🥗 Daily Calorie Trend</div>
+        <canvas id="macroChart" height="120"></canvas>
+        <div id="macroEmpty" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Log meals to see your calorie trend.</div>
+      </div>
+      <!-- All logs table -->
       <div class="card"><div class="card-title">All Workout Logs</div><div id="allLogsTable"></div></div>
     </div>
     <div id="cAsk" class="tab-panel">
@@ -902,10 +987,14 @@ async function loadClientDashboard() {
   document.getElementById('cDietPlan').textContent = plan.diet || 'No diet plan assigned yet. Check back soon!';
   // Real-time logs
   const logsQ = query(collection(db,'logs'), where('clientId','==',id));
-  const logsUnsub = onSnapshot(logsQ, snap => {
+  const logsUnsub = onSnapshot(logsQ, async snap => {
     const logs = snap.docs.map(d=>d.data()).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
     renderClientLogs(logs);
     renderClientStats(logs);
+    // Load meals for macro chart then render all charts
+    const mSnap = await getDocs(query(collection(db,'meals'), where('clientId','==',id)));
+    const meals = mSnap.docs.map(d=>d.data());
+    await loadProgressCharts(logs, meals);
   });
   unsubscribers.push(logsUnsub);
   // Real-time questions (to see replies)
@@ -1375,6 +1464,240 @@ function esc(str) {
 document.querySelectorAll('.modal').forEach(m => {
   m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); });
 });
+
+// ================================================================
+// CHARTS & PROGRESS VISUALISATION
+// ================================================================
+let chartInstances = {};
+let clientLogsCache = [];
+let clientMealsCache = [];
+let measurementsCache = [];
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function makeChart(id, type, labels, datasets, extraScales={}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx || typeof Chart === 'undefined') return;
+  chartInstances[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: true, animation: { duration: 500 },
+      plugins: { legend: { labels: { color: '#777', font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: '#555', font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: '#1a1a1a' } },
+        y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1a1a1a' } },
+        ...extraScales
+      }
+    }
+  });
+}
+
+// ================================================================
+// MEASUREMENTS
+// ================================================================
+window.logMeasurements = async function() {
+  const fieldMap = { mWeight:'weight', mWaist:'waist', mChest:'chest', mHips:'hips', mArms:'arms', mThighs:'thighs', mBodyFat:'bodyFat' };
+  const entry = { clientId: currentUser.id, date: new Date().toLocaleDateString('en-GB'), timestamp: serverTimestamp() };
+  let hasValue = false;
+  Object.entries(fieldMap).forEach(([elId, key]) => {
+    const val = parseFloat(document.getElementById(elId)?.value);
+    if (!isNaN(val) && val > 0) { entry[key] = val; hasValue = true; }
+  });
+  if (!hasValue) { alert('Please enter at least one measurement.'); return; }
+  await addDoc(collection(db, 'measurements'), entry);
+  Object.keys(fieldMap).forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ''; });
+  show('measureSuccess'); setTimeout(() => hide('measureSuccess'), 2500);
+  await loadMeasurements();
+};
+
+async function loadMeasurements() {
+  if (!currentUser) return;
+  const snap = await getDocs(query(collection(db,'measurements'), where('clientId','==',currentUser.id)));
+  measurementsCache = snap.docs.map(d=>d.data()).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+  window.renderMeasureChart();
+  renderMeasureComparison();
+}
+
+window.renderMeasureChart = function() {
+  const field = document.getElementById('measureSelect')?.value || 'weight';
+  const labelMap = { weight:'Weight (kg)', waist:'Waist (cm)', chest:'Chest (cm)', hips:'Hips (cm)', arms:'Arms (cm)', thighs:'Thighs (cm)', bodyFat:'Body Fat %' };
+  const colorMap = { weight:'#c8ff00', waist:'#ff6b35', chest:'#4db8ff', hips:'#ff88cc', arms:'#cc88ff', thighs:'#ffcc44', bodyFat:'#ff4444' };
+  const data = measurementsCache.filter(m => m[field] !== undefined);
+  const canvas = document.getElementById('measureChart');
+  const empty = document.getElementById('measureEmpty');
+  if (!data.length) { if(canvas) canvas.style.display='none'; if(empty) empty.style.display='block'; destroyChart('measureChart'); return; }
+  if(canvas) canvas.style.display='block'; if(empty) empty.style.display='none';
+  const vals = data.map(m=>m[field]);
+  const min = Math.min(...vals); const max = Math.max(...vals); const pad = (max-min)*0.2||1;
+  const color = colorMap[field];
+  makeChart('measureChart','line',data.map(m=>m.date),[{
+    label: labelMap[field], data: vals, borderColor: color, backgroundColor: color+'18',
+    pointBackgroundColor: color, pointRadius: 5, tension: 0.3, fill: true
+  }], { y: { min:min-pad, max:max+pad, ticks:{color:'#555',font:{size:10}}, grid:{color:'#1a1a1a'} } });
+};
+
+function renderMeasureComparison() {
+  const el = document.getElementById('measureComparison');
+  if (!el || measurementsCache.length < 2) { if(el) el.innerHTML=''; return; }
+  const first = measurementsCache[0]; const last = measurementsCache[measurementsCache.length-1];
+  const fields = [
+    {key:'weight',label:'Weight',unit:'kg',down:true},{key:'waist',label:'Waist',unit:'cm',down:true},
+    {key:'chest',label:'Chest',unit:'cm',down:false},{key:'hips',label:'Hips',unit:'cm',down:true},
+    {key:'arms',label:'Arms',unit:'cm',down:false},{key:'thighs',label:'Thighs',unit:'cm',down:true},
+    {key:'bodyFat',label:'Body Fat',unit:'%',down:true}
+  ].filter(f=>first[f.key]!==undefined && last[f.key]!==undefined);
+  if (!fields.length) { el.innerHTML=''; return; }
+  el.innerHTML = `<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:16px 0 10px">Progress: ${first.date} → ${last.date}</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      ${fields.map(f=>{
+        const diff=+(last[f.key]-first[f.key]).toFixed(1);
+        const improved=f.down?diff<0:diff>0; const color=diff===0?'var(--muted)':improved?'var(--success)':'var(--danger)';
+        const arrow=diff===0?'→':diff<0?'↓':'↑';
+        return `<div style="background:var(--surface2);border:1px solid var(--border);padding:12px;text-align:center">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${f.label}</div>
+          <div style="font-size:20px;font-weight:900;color:${color}">${arrow}${Math.abs(diff)}${f.unit}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${first[f.key]}→${last[f.key]}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+async function loadProgressCharts(logs, meals) {
+  clientLogsCache = logs; clientMealsCache = meals;
+  setTimeout(() => { renderVolumeChart(logs); renderMacroChart(meals); populateExerciseSelect(logs); }, 150);
+  await loadMeasurements();
+}
+
+// Populate exercise dropdown
+function populateExerciseSelect(logs) {
+  const exercises = [...new Set(logs.map(l => l.exercise))].sort();
+  const sel = document.getElementById('exerciseSelect');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Select exercise...</option>' +
+    exercises.map(e => `<option value="${esc(e)}" ${e===current?'selected':''}>${esc(e)}</option>`).join('');
+  if (current && exercises.includes(current)) window.renderStrengthChart();
+}
+
+// Strength chart for selected exercise
+window.renderStrengthChart = function() {
+  const exercise = document.getElementById('exerciseSelect')?.value;
+  const canvas = document.getElementById('strengthChart');
+  const empty = document.getElementById('strengthEmpty');
+  if (!exercise) {
+    if (empty) empty.style.display = 'block';
+    if (canvas) canvas.style.display = 'none';
+    destroyChart('strengthChart');
+    return;
+  }
+  const filtered = clientLogsCache
+    .filter(l => l.exercise.toLowerCase() === exercise.toLowerCase())
+    .sort((a,b) => (a.timestamp?.seconds||0) - (b.timestamp?.seconds||0));
+
+  if (!filtered.length) return;
+  if (empty) empty.style.display = 'none';
+  if (canvas) canvas.style.display = 'block';
+
+  // Max weight per date
+  const byDate = {};
+  filtered.forEach(l => {
+    if (!byDate[l.date] || l.weight > byDate[l.date].weight) byDate[l.date] = l;
+  });
+  const sorted = Object.values(byDate).sort((a,b) => (a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+  const labels = sorted.map(l => l.date);
+  const weights = sorted.map(l => l.weight);
+  const volumes = sorted.map(l => l.sets * l.reps * l.weight);
+
+  makeChart('strengthChart','line',labels,[
+    {label:'Max Weight (kg)',data:weights,borderColor:'#c8ff00',backgroundColor:'rgba(200,255,0,0.08)',pointBackgroundColor:'#c8ff00',pointRadius:5,tension:0.3,yAxisID:'y',fill:true},
+    {label:'Volume (S×R×W)',data:volumes,borderColor:'#ff6b35',backgroundColor:'rgba(255,107,53,0.06)',pointBackgroundColor:'#ff6b35',pointRadius:4,tension:0.3,yAxisID:'y1',fill:false}
+  ],{
+    y:{ticks:{color:'#c8ff00',font:{size:10}},grid:{color:'#1a1a1a'},position:'left'},
+    y1:{ticks:{color:'#ff6b35',font:{size:10}},grid:{display:false},position:'right'}
+  });
+};
+
+// Weekly training volume chart
+function renderVolumeChart(logs) {
+  const canvas = document.getElementById('volumeChart');
+  const empty = document.getElementById('volumeEmpty');
+  if (!logs.length) {
+    if (empty) empty.style.display = 'block';
+    if (canvas) canvas.style.display = 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  if (canvas) canvas.style.display = 'block';
+
+  // Group by week
+  const byWeek = {};
+  logs.forEach(l => {
+    const [dd,mm,yyyy] = l.date.split('/').map(Number);
+    const d = new Date(yyyy,mm-1,dd);
+    const week = getWeekLabel(d);
+    if (!byWeek[week]) byWeek[week] = { sets: 0, volume: 0 };
+    byWeek[week].sets += l.sets;
+    byWeek[week].volume += l.sets * l.reps * l.weight;
+  });
+
+  const labels = Object.keys(byWeek).slice(-10);
+  const setsData = labels.map(w => byWeek[w].sets);
+  const volData = labels.map(w => Math.round(byWeek[w].volume));
+
+  makeChart('volumeChart','bar',labels,[
+    {label:'Total Sets',data:setsData,backgroundColor:'rgba(200,255,0,0.75)',borderColor:'#c8ff00',borderWidth:1,yAxisID:'y'},
+    {label:'Volume (kg moved)',data:volData,backgroundColor:'rgba(255,107,53,0.55)',borderColor:'#ff6b35',borderWidth:1,yAxisID:'y1'}
+  ],{
+    y:{ticks:{color:'#c8ff00',font:{size:10}},grid:{color:'#1a1a1a'},position:'left'},
+    y1:{ticks:{color:'#ff6b35',font:{size:10}},grid:{display:false},position:'right'}
+  });
+}
+
+// Daily calorie chart from meals
+function renderMacroChart(meals) {
+  const canvas = document.getElementById('macroChart');
+  const empty = document.getElementById('macroEmpty');
+  if (!meals.length) {
+    if (empty) empty.style.display = 'block';
+    if (canvas) canvas.style.display = 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  if (canvas) canvas.style.display = 'block';
+
+  const byDate = {};
+  meals.forEach(m => {
+    if (!byDate[m.date]) byDate[m.date] = { cal:0, pro:0, carb:0, fat:0 };
+    byDate[m.date].cal  += m.totals?.calories||0;
+    byDate[m.date].pro  += m.totals?.protein||0;
+    byDate[m.date].carb += m.totals?.carbs||0;
+    byDate[m.date].fat  += m.totals?.fat||0;
+  });
+
+  const labels = Object.keys(byDate).sort((a,b)=>{
+    const toD = s => { const [d,m,y]=s.split('/').map(Number); return new Date(y,m-1,d); };
+    return toD(a)-toD(b);
+  }).slice(-14);
+
+  makeChart('macroChart','bar',labels,[
+    {label:'Protein (g)',data:labels.map(d=>Math.round(byDate[d].pro)),backgroundColor:'rgba(77,184,255,0.85)',stack:'m'},
+    {label:'Carbs (g)',data:labels.map(d=>Math.round(byDate[d].carb)),backgroundColor:'rgba(255,153,68,0.85)',stack:'m'},
+    {label:'Fat (g)',data:labels.map(d=>Math.round(byDate[d].fat)),backgroundColor:'rgba(204,136,255,0.85)',stack:'m'}
+  ],{
+    x:{stacked:true,ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},
+    y:{stacked:true,ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}}
+  });
+}
+
+function getWeekLabel(date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay() + 1);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+}
 
 // ================================================================
 // MEAL LOGGING — AI PHOTO ANALYSIS
