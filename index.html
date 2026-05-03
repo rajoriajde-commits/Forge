@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORGE — Fitness Coaching Platform</title>
+<style>
+:root {
+  --bg: #080808;
+  --surface: #111111;
+  --surface2: #181818;
+  --border: #222222;
+  --accent: #c8ff00;
+  --text: #f0f0f0;
+  --muted: #555555;
+  --danger: #ff4444;
+  --success: #00cc66;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; min-height:100vh; }
+
+/* ===== SETUP SCREEN ===== */
+#setupScreen {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:var(--bg); padding:24px;
+}
+.setup-card {
+  background:var(--surface); border:1px solid var(--border);
+  padding:48px; width:680px; max-width:100%;
+}
+.setup-logo { font-size:36px; font-weight:900; color:var(--accent); letter-spacing:-2px; }
+.setup-sub { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-top:4px; margin-bottom:32px; }
+.steps { counter-reset:step; list-style:none; margin-bottom:32px; }
+.steps li {
+  counter-increment:step; padding:14px 16px 14px 52px; border:1px solid var(--border);
+  margin-bottom:8px; position:relative; line-height:1.6; font-size:13px; color:#ccc;
+}
+.steps li::before {
+  content:counter(step); position:absolute; left:14px; top:50%; transform:translateY(-50%);
+  width:24px; height:24px; background:var(--accent); color:#000; font-weight:900;
+  font-size:12px; display:flex; align-items:center; justify-content:center; border-radius:0;
+}
+.steps li strong { color:var(--text); }
+.steps li code { background:var(--bg); padding:2px 8px; font-size:12px; color:var(--accent); border:1px solid var(--border); }
+.config-area {
+  width:100%; background:var(--bg); border:1px solid var(--border); color:var(--accent);
+  padding:16px; font-family:'Courier New',monospace; font-size:12px; height:200px;
+  resize:none; outline:none; line-height:1.6;
+}
+.config-area:focus { border-color:var(--accent); }
+.setup-error { color:#ff7777; font-size:13px; margin-top:10px; min-height:20px; }
+.link { color:var(--accent); text-decoration:none; }
+.link:hover { text-decoration:underline; }
+
+/* ===== LOADING ===== */
+#loadingOverlay {
+  position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:999;
+}
+.spinner {
+  width:40px; height:40px; border:3px solid var(--border);
+  border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { margin-top:16px; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+
+/* ===== LOGIN ===== */
+#loginScreen { min-height:100vh; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+.bg-text { position:absolute; font-size:22vw; font-weight:900; color:#0f0f0f; letter-spacing:-3vw; user-select:none; pointer-events:none; top:50%; left:50%; transform:translate(-50%,-50%); white-space:nowrap; }
+.login-card { background:var(--surface); border:1px solid var(--border); padding:48px; width:400px; position:relative; z-index:1; animation:slideUp 0.4s ease; }
+.logo { font-size:36px; font-weight:900; color:var(--accent); letter-spacing:-2px; }
+.tagline { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-top:6px; margin-bottom:40px; }
+.hint { margin-top:28px; padding:16px; background:var(--surface2); border-left:3px solid var(--accent); font-size:12px; color:var(--muted); line-height:1.8; }
+.hint strong { color:var(--text); }
+
+/* ===== FORMS ===== */
+label { display:block; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+input[type=text],input[type=password],input[type=number],input[type=file],select,textarea {
+  width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+  padding:12px 14px; font-size:14px; font-family:inherit; outline:none; transition:border-color 0.2s;
+}
+input:focus,select:focus,textarea:focus { border-color:var(--accent); }
+textarea { resize:vertical; }
+.form-group { margin-bottom:18px; }
+
+/* ===== BUTTONS ===== */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:12px 24px; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; border:none; cursor:pointer; transition:all 0.15s; font-family:inherit; white-space:nowrap; }
+.btn-full { width:100%; }
+.btn-primary { background:var(--accent); color:#000; }
+.btn-primary:hover { background:#d8ff22; }
+.btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+.btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+.btn-sm { padding:7px 14px; font-size:10px; }
+.btn-danger { background:transparent; border:1px solid #ff444455; color:var(--danger); }
+.btn-danger:hover { border-color:var(--danger); background:#ff444410; }
+
+/* ===== LAYOUT ===== */
+.hidden { display:none !important; }
+#trainerView { display:none; height:100vh; overflow:hidden; }
+#trainerView:not(.hidden) { display:flex; }
+#clientView { display:none; flex-direction:column; height:100vh; }
+#clientView:not(.hidden) { display:flex; }
+
+/* ===== SIDEBAR ===== */
+.sidebar { width:250px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+.sidebar-header { padding:20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.sidebar-logo { font-size:24px; font-weight:900; color:var(--accent); letter-spacing:-1px; }
+.sidebar-section-title { padding:16px 20px 8px; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+.client-list { flex:1; overflow-y:auto; }
+.client-item { padding:14px 20px; cursor:pointer; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; transition:background 0.15s; border-left:3px solid transparent; }
+.client-item:hover { background:var(--surface2); }
+.client-item.active { background:var(--surface2); border-left-color:var(--accent); }
+.avatar { width:34px; height:34px; background:var(--accent); color:#000; font-weight:900; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.client-item-name { font-size:13px; font-weight:600; }
+.client-item-sub { font-size:11px; color:var(--muted); }
+.sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+
+/* ===== MAIN ===== */
+.main-content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.top-bar { padding:0 28px; height:62px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:var(--surface); }
+.top-bar-title { font-size:17px; font-weight:700; }
+.live-badge { display:inline-flex; align-items:center; gap:6px; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--success); }
+.live-dot { width:7px; height:7px; background:var(--success); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ===== TABS ===== */
+.tabs { display:flex; border-bottom:1px solid var(--border); padding:0 28px; flex-shrink:0; background:var(--surface); overflow-x:auto; }
+.tab { padding:16px 18px; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; white-space:nowrap; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-content { flex:1; overflow-y:auto; padding:28px; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; animation:fadeIn 0.25s ease; }
+
+/* ===== CARDS ===== */
+.card { background:var(--surface); border:1px solid var(--border); padding:22px; margin-bottom:18px; }
+.card-title { font-size:10px; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }
+.stat-box { background:var(--surface); border:1px solid var(--border); padding:22px; text-align:center; }
+.stat-val { font-size:42px; font-weight:900; color:var(--accent); line-height:1; letter-spacing:-2px; }
+.stat-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-top:8px; }
+
+/* ===== TABLE ===== */
+.table { width:100%; border-collapse:collapse; }
+.table th { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); }
+.table td { padding:11px 14px; border-bottom:1px solid var(--border); font-size:13px; }
+.table tr:last-child td { border-bottom:none; }
+.table tr:hover td { background:var(--surface2); }
+
+/* ===== Q&A ===== */
+.q-item { background:var(--surface2); border:1px solid var(--border); padding:18px; margin-bottom:12px; }
+.q-meta { font-size:11px; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:10px; }
+.q-text { font-size:14px; margin-bottom:14px; line-height:1.5; }
+.q-answer { background:var(--bg); border-left:3px solid var(--accent); padding:12px 16px; font-size:13px; color:#bbb; line-height:1.6; }
+.q-answer strong { color:var(--accent); font-size:10px; letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:6px; }
+.badge { display:inline-block; padding:3px 10px; font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.badge-pending { background:#ff6b3520; color:#ff8555; border:1px solid #ff6b3540; }
+.badge-answered { background:#00cc6620; color:#00cc66; border:1px solid #00cc6640; }
+
+/* ===== ALERTS ===== */
+.alert { padding:12px 16px; margin-bottom:16px; font-size:13px; line-height:1.4; }
+.alert-error { background:#ff444415; border:1px solid #ff444440; color:#ff7777; }
+.alert-success { background:#00cc6615; border:1px solid #00cc6640; color:#00cc66; }
+
+/* ===== OTHER ===== */
+.log-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1.2fr auto; gap:12px; align-items:flex-end; margin-bottom:22px; }
+.plan-text { white-space:pre-wrap; line-height:1.8; font-size:13px; color:#ccc; font-family:'Courier New',monospace; }
+.video-item { display:flex; align-items:center; gap:16px; padding:14px; background:var(--surface2); border:1px solid var(--border); margin-bottom:10px; }
+.video-thumb { width:64px; height:48px; background:#1c1c1c; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
+.activity-item { padding:12px 0; border-bottom:1px solid var(--border); font-size:13px; display:flex; align-items:center; justify-content:space-between; }
+.activity-item:last-child { border-bottom:none; }
+.hl { color:var(--accent); font-weight:700; }
+.welcome-banner { background:linear-gradient(135deg,#1a1a0a 0%,#111 100%); border:1px solid #2a2a00; border-left:4px solid var(--accent); padding:20px 24px; margin-bottom:20px; }
+.welcome-banner h2 { font-size:20px; font-weight:900; margin-bottom:4px; }
+.welcome-banner p { font-size:13px; color:var(--muted); }
+.empty { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-icon { font-size:52px; margin-bottom:16px; }
+.client-header { padding:0 28px; height:62px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+
+/* ===== MODAL ===== */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,0.88); display:flex; align-items:center; justify-content:center; z-index:200; animation:fadeIn 0.2s ease; }
+.modal-box { background:var(--surface); border:1px solid #333; padding:38px; width:500px; max-width:95vw; max-height:90vh; overflow-y:auto; animation:slideUp 0.25s ease; }
+.modal-title { font-size:22px; font-weight:900; margin-bottom:28px; letter-spacing:-0.5px; }
+
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#2a2a2a}
+</style>
+</head>
+<body>
+
+<!-- ======== SETUP SCREEN ======== -->
+<div id="setupScreen" class="hidden">
+  <div class="setup-card">
+    <div class="setup-logo">FORGE</div>
+    <div class="setup-sub">Firebase Setup Required</div>
+    <ol class="steps">
+      <li>Go to <a class="link" href="https://console.firebase.google.com" target="_blank"><strong>console.firebase.google.com</strong></a> and sign in with Google</li>
+      <li>Click <strong>Add Project</strong> → name it <code>forge-coaching</code> → click through and create</li>
+      <li>In the left sidebar click <strong>Firestore Database</strong> → <strong>Create database</strong> → choose <strong>Start in test mode</strong> → pick any region → Done</li>
+      <li>Click the <strong>⚙️ gear icon</strong> (top left) → <strong>Project settings</strong> → scroll to <strong>Your apps</strong> → click <code>&lt;/&gt;</code> Web icon → register app with any name</li>
+      <li>Copy the <strong>firebaseConfig</strong> object shown and paste it below</li>
+    </ol>
+    <div class="form-group">
+      <label>Paste your Firebase Config JSON here</label>
+      <textarea class="config-area" id="configInput" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-app-id",
+  "storageBucket": "your-app.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123:web:abc123"
+}'></textarea>
+    </div>
+    <div class="setup-error" id="setupError"></div>
+    <button class="btn btn-primary" onclick="connectFirebase()">Connect &amp; Launch App →</button>
+    <div class="hint" style="margin-top:24px">
+      <strong>After setup:</strong> Host this file on <a class="link" href="https://app.netlify.com/drop" target="_blank">Netlify Drop</a> (free) and share the link with your clients. Everyone's data syncs in real time.
+    </div>
+  </div>
+</div>
+
+<!-- ======== LOADING ======== -->
+<div id="loadingOverlay" class="hidden">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Connecting...</div>
+</div>
+
+<!-- ======== LOGIN SCREEN ======== -->
+<div id="loginScreen" class="hidden">
+  <div class="bg-text">FORGE</div>
+  <div class="login-card">
+    <div class="logo">FORGE</div>
+    <div class="tagline">Fitness Coaching Platform</div>
+    <div id="loginError" class="alert alert-error hidden"></div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Enter your username" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Enter your password">
+    </div>
+    <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">Login →</button>
+  </div>
+</div>
+
+<!-- ======== TRAINER VIEW ======== -->
+<div id="trainerView" class="hidden">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">FORGE</span>
+      <button class="btn btn-sm btn-outline" onclick="logout()">Exit</button>
+    </div>
+    <div class="sidebar-section-title">Clients</div>
+    <div class="client-list" id="clientList"></div>
+    <div class="sidebar-footer">
+      <button class="btn btn-primary btn-sm" onclick="openModal('addClientModal')">+ Add Client</button>
+      <button class="btn btn-outline btn-sm" onclick="openModal('changePasswordModal')">⚙ Change Password</button>
+    </div>
+  </div>
+  <div class="main-content">
+    <div class="top-bar">
+      <div class="top-bar-title" id="trainerTopTitle">Select a Client</div>
+      <div class="live-badge"><div class="live-dot"></div>Live Sync</div>
+    </div>
+    <div class="tabs" id="trainerTabs">
+      <div class="tab active" onclick="switchTab(this,'tOverview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'tProgress')">Progress</div>
+      <div class="tab" onclick="switchTab(this,'tPlans')">Plans</div>
+      <div class="tab" onclick="switchTab(this,'tQA')">Q &amp; A</div>
+      <div class="tab" onclick="switchTab(this,'tVideos')">Videos</div>
+    </div>
+    <div class="tab-content">
+      <div id="tOverview" class="tab-panel active"><div class="empty"><div class="empty-icon">👥</div>Select a client from the sidebar</div></div>
+      <div id="tProgress" class="tab-panel"><div class="empty"><div class="empty-icon">📊</div>Select a client to view their progress</div></div>
+      <div id="tPlans" class="tab-panel"><div class="empty"><div class="empty-icon">📋</div>Select a client to manage plans</div></div>
+      <div id="tQA" class="tab-panel"><div class="empty"><div class="empty-icon">💬</div>Select a client to view questions</div></div>
+      <div id="tVideos" class="tab-panel"><div class="empty"><div class="empty-icon">🎬</div>Select a client to view videos</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== CLIENT VIEW ======== -->
+<div id="clientView" class="hidden">
+  <div class="client-header">
+    <div style="display:flex;align-items:center;gap:16px">
+      <span style="font-size:22px;font-weight:900;color:var(--accent);letter-spacing:-1px">FORGE</span>
+      <span style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">Training Platform</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="live-badge"><div class="live-dot"></div>Live</div>
+      <div style="text-align:right">
+        <div id="cUserName" style="font-size:13px;font-weight:600"></div>
+        <div style="font-size:11px;color:var(--muted)">Client</div>
+      </div>
+      <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="tabs" id="clientTabs">
+    <div class="tab active" onclick="switchClientTab(this,'cPlan')">My Plan</div>
+    <div class="tab" onclick="switchClientTab(this,'cLog')">Log Workout</div>
+    <div class="tab" onclick="switchClientTab(this,'cProgress')">Progress</div>
+    <div class="tab" onclick="switchClientTab(this,'cAsk')">Ask Coach</div>
+    <div class="tab" onclick="switchClientTab(this,'cVideo')">Upload Video</div>
+  </div>
+  <div class="tab-content" style="flex:1;overflow-y:auto">
+    <div id="cPlan" class="tab-panel active">
+      <div class="two-col">
+        <div class="card"><div class="card-title">💪 Workout Plan</div><div class="plan-text" id="cWorkoutPlan">Loading...</div></div>
+        <div class="card"><div class="card-title">🥗 Diet Plan</div><div class="plan-text" id="cDietPlan">Loading...</div></div>
+      </div>
+    </div>
+    <div id="cLog" class="tab-panel">
+      <div class="card">
+        <div class="card-title">Log Today's Workout</div>
+        <div class="log-grid">
+          <div class="form-group" style="margin:0"><label>Exercise</label><input type="text" id="logExercise" placeholder="e.g. Bench Press"></div>
+          <div class="form-group" style="margin:0"><label>Sets</label><input type="number" id="logSets" placeholder="3" min="1"></div>
+          <div class="form-group" style="margin:0"><label>Reps</label><input type="number" id="logReps" placeholder="10" min="1"></div>
+          <div class="form-group" style="margin:0"><label>Weight (kg)</label><input type="number" id="logWeight" placeholder="60" min="0" step="0.5"></div>
+          <button class="btn btn-primary" onclick="addLog()" style="margin-top:20px;height:44px">Add</button>
+        </div>
+        <div id="logSuccess" class="alert alert-success hidden">✓ Workout logged — your coach can see it now!</div>
+      </div>
+      <div class="card"><div class="card-title">Recent Entries</div><div id="recentLogs"></div></div>
+    </div>
+    <div id="cProgress" class="tab-panel">
+      <div class="stat-grid" id="cStatGrid"></div>
+      <div class="card"><div class="card-title">All Workout Logs</div><div id="allLogsTable"></div></div>
+    </div>
+    <div id="cAsk" class="tab-panel">
+      <div class="card">
+        <div class="card-title">Ask Your Coach</div>
+        <div class="form-group"><label>Your Question</label><textarea id="questionText" rows="4" placeholder="Type your question here..."></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="submitQuestion()">Send Question →</button>
+        <div id="qSuccess" class="alert alert-success hidden" style="margin-top:14px">✓ Sent! Your coach will reply soon.</div>
+      </div>
+      <div id="clientQAs"></div>
+    </div>
+    <div id="cVideo" class="tab-panel">
+      <div class="card">
+        <div class="card-title">Submit Workout Video</div>
+        <div class="form-group"><label>Select Video File</label><input type="file" id="videoFile" accept="video/*"></div>
+        <div class="form-group"><label>Notes for your coach</label><textarea id="videoNote" rows="2" placeholder="e.g. Week 3 – Squat form check"></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="uploadVideo()">Submit Video →</button>
+        <div id="videoSuccess" class="alert alert-success hidden" style="margin-top:14px">✓ Submitted! Your coach has been notified.</div>
+        <p style="margin-top:14px;font-size:12px;color:var(--muted)">ℹ Video metadata is stored. Share the actual file with your coach via WhatsApp or email.</p>
+      </div>
+      <div id="clientVideoList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== MODALS ======== -->
+<div id="changePasswordModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-title">Change Trainer Password</div>
+    <div class="form-group"><label>Current Password</label><input type="password" id="cpCurrent" placeholder="Enter current password"></div>
+    <div class="form-group"><label>New Password</label><input type="password" id="cpNew" placeholder="Enter new password"></div>
+    <div class="form-group"><label>Confirm New Password</label><input type="password" id="cpConfirm" placeholder="Repeat new password"></div>
+    <div id="cpError" class="alert alert-error hidden"></div>
+    <div id="cpSuccess" class="alert alert-success hidden">✓ Password updated successfully!</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+      <button class="btn btn-outline" onclick="closeModal('changePasswordModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="addClientModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-title">Add New Client</div>
+    <div class="form-group"><label>Full Name</label><input type="text" id="ncName" placeholder="e.g. John Smith"></div>
+    <div class="form-group"><label>Username (for login)</label><input type="text" id="ncUsername" placeholder="e.g. john"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="ncPassword" placeholder="Set a password"></div>
+    <div id="addClientErr" class="alert alert-error hidden"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="addClient()">Create Client</button>
+      <button class="btn btn-outline" onclick="closeModal('addClientModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="editPlanModal" class="modal hidden">
+  <div class="modal-box" style="width:620px">
+    <div class="modal-title" id="editPlanTitle">Edit Plan</div>
+    <div class="form-group"><label id="editPlanLabel">Content</label><textarea id="editPlanText" rows="14" style="font-family:'Courier New',monospace;font-size:13px"></textarea></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="savePlan()">Save Plan</button>
+      <button class="btn btn-outline" onclick="closeModal('editPlanModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="answerModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-title">Answer Question</div>
+    <div style="background:var(--bg);border:1px solid var(--border);padding:16px;margin-bottom:22px;font-size:14px;line-height:1.6;color:#ccc" id="answerQPreview"></div>
+    <div class="form-group"><label>Your Answer</label><textarea id="answerText" rows="5" placeholder="Type your reply..."></textarea></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="submitAnswer()">Send Answer</button>
+      <button class="btn btn-outline" onclick="closeModal('answerModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ================================================================
+// FIREBASE CONFIG — Pre-configured
+// ================================================================
+const EMBEDDED_CONFIG = {
+  apiKey: "AIzaSyBOZyu7IywzwkE8CIl6Rz5vyKuEwd6Gr7s",
+  authDomain: "forge-c887f.firebaseapp.com",
+  projectId: "forge-c887f",
+  storageBucket: "forge-c887f.firebasestorage.app",
+  messagingSenderId: "424871697943",
+  appId: "1:424871697943:web:e109989c4204523fda0652"
+};
+
+// ================================================================
+// FIREBASE IMPORTS
+// ================================================================
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc,
+  updateDoc, query, where, orderBy, onSnapshot, serverTimestamp, limit
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ================================================================
+// STATE
+// ================================================================
+let db = null;
+let currentUser = null;
+let selectedClientId = null;
+let editPlanType = null;
+let answerQId = null;
+let unsubscribers = [];
+
+// ================================================================
+// SETUP — Connect Firebase
+// ================================================================
+window.connectFirebase = async function() {
+  const raw = document.getElementById('configInput').value.trim();
+  const errEl = document.getElementById('setupError');
+  errEl.textContent = '';
+  try {
+    const config = JSON.parse(raw);
+    if (!config.apiKey || !config.projectId) throw new Error('Missing apiKey or projectId');
+    showLoading('Connecting to Firebase...');
+    const app = initializeApp(config);
+    db = getFirestore(app);
+    // Test connection by checking users collection
+    await getDocs(query(collection(db, 'users'), limit(1)));
+    localStorage.setItem('forge_fb_config', JSON.stringify(config));
+    await seedIfEmpty();
+    hideLoading();
+    hide('setupScreen');
+    show('loginScreen');
+  } catch (e) {
+    hideLoading();
+    errEl.textContent = 'Error: ' + e.message + '. Check your config and try again.';
+  }
+};
+
+async function tryAutoConnect() {
+  try {
+    showLoading('Connecting to FORGE...');
+    const app = initializeApp(EMBEDDED_CONFIG);
+    db = getFirestore(app);
+    await getDocs(query(collection(db, 'users'), limit(1)));
+    await seedIfEmpty();
+    hideLoading();
+    show('loginScreen');
+  } catch (e) {
+    document.getElementById('loadingText').textContent = 'Connection failed. Check your internet and refresh the page.';
+  }
+}
+
+// ================================================================
+// SEED DEFAULT DATA
+// ================================================================
+async function seedIfEmpty() {
+  const snap = await getDocs(query(collection(db, 'users'), limit(1)));
+  if (!snap.empty) return;
+  // Create default trainer
+  await setDoc(doc(db, 'users', 'trainer'), {
+    id: 'trainer', name: 'Coach', username: 'trainer',
+    password: 'forge123', role: 'trainer', createdAt: serverTimestamp()
+  });
+}
+
+// ================================================================
+// AUTH
+// ================================================================
+window.login = async function() {
+  const username = document.getElementById('loginUser').value.trim().toLowerCase();
+  const password = document.getElementById('loginPass').value;
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Logging in...';
+  hide('loginError');
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
+    if (snap.empty) { showErr('loginError', 'Invalid username or password.'); btn.disabled=false; btn.textContent='Login →'; return; }
+    const userDoc = snap.docs[0].data();
+    if (userDoc.password !== password) { showErr('loginError', 'Invalid username or password.'); btn.disabled=false; btn.textContent='Login →'; return; }
+    currentUser = userDoc;
+    hide('loginScreen');
+    btn.disabled=false; btn.textContent='Login →';
+    if (userDoc.role === 'trainer') {
+      show('trainerView');
+      await loadClientList();
+      listenClients();
+    } else {
+      show('clientView');
+      document.getElementById('cUserName').textContent = userDoc.name;
+      await loadClientDashboard();
+    }
+  } catch(e) {
+    showErr('loginError', 'Connection error. Try again.');
+    btn.disabled=false; btn.textContent='Login →';
+  }
+};
+
+window.logout = function() {
+  cleanupListeners();
+  currentUser = null; selectedClientId = null;
+  hide('trainerView'); hide('clientView');
+  show('loginScreen');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  hide('loginError');
+};
+
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') window.login(); });
+document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') window.login(); });
+
+function cleanupListeners() {
+  unsubscribers.forEach(fn => fn());
+  unsubscribers = [];
+}
+
+// ================================================================
+// TRAINER — CLIENT LIST
+// ================================================================
+function listenClients() {
+  const q = query(collection(db, 'users'), where('role', '==', 'client'));
+  const unsub = onSnapshot(q, snap => {
+    const clients = snap.docs.map(d => d.data()).sort((a,b) => a.name.localeCompare(b.name));
+    renderClientList(clients);
+  });
+  unsubscribers.push(unsub);
+}
+
+async function loadClientList() {
+  const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'client')));
+  renderClientList(snap.docs.map(d => d.data()).sort((a,b) => a.name.localeCompare(b.name)));
+}
+
+function renderClientList(clients) {
+  document.getElementById('clientList').innerHTML = clients.map(c => `
+    <div class="client-item ${selectedClientId === c.id ? 'active' : ''}" onclick="window.selectClient('${c.id}','${esc(c.name)}')">
+      <div class="avatar" style="font-size:13px">${c.name.charAt(0)}</div>
+      <div>
+        <div class="client-item-name">${esc(c.name)}</div>
+        <div class="client-item-sub">@${esc(c.username)}</div>
+      </div>
+    </div>
+  `).join('') || '<div style="padding:20px;color:var(--muted);font-size:13px">No clients yet</div>';
+}
+
+window.selectClient = async function(id, name) {
+  selectedClientId = id;
+  document.getElementById('trainerTopTitle').textContent = name;
+  // Cleanup previous client listeners
+  cleanupListeners();
+  listenClients();
+  // Setup real-time listeners for selected client
+  listenClientLogs(id);
+  listenClientQuestions(id);
+  listenClientVideos(id);
+  await loadTPlans(id);
+  // Highlight active
+  document.querySelectorAll('.client-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget && event.currentTarget.classList.add('active');
+};
+
+// ================================================================
+// TRAINER — REAL-TIME LISTENERS
+// ================================================================
+function listenClientLogs(clientId) {
+  const q = query(collection(db, 'logs'), where('clientId', '==', clientId));
+  const unsub = onSnapshot(q, snap => {
+    const logs = snap.docs.map(d=>({...d.data(), docId:d.id})).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+    renderTOverview(clientId, logs);
+    renderTProgress(logs);
+  });
+  unsubscribers.push(unsub);
+}
+
+function listenClientQuestions(clientId) {
+  const q = query(collection(db, 'questions'), where('clientId', '==', clientId));
+  const unsub = onSnapshot(q, snap => {
+    const qs = snap.docs.map(d=>({...d.data(), docId:d.id})).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+    renderTQA(qs);
+    // refresh overview stats
+    const logsSub = document.getElementById('tOverview').querySelector('.stat-val');
+    if (logsSub) { /* overview re-renders from logs listener */ }
+  });
+  unsubscribers.push(unsub);
+}
+
+function listenClientVideos(clientId) {
+  const q = query(collection(db, 'videos'), where('clientId', '==', clientId));
+  const unsub = onSnapshot(q, snap => {
+    const vids = snap.docs.map(d=>({...d.data(), docId:d.id})).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+    renderTVideos(vids);
+  });
+  unsubscribers.push(unsub);
+}
+
+// ================================================================
+// TRAINER — RENDER
+// ================================================================
+async function renderTOverview(clientId, logs) {
+  const qSnap = await getDocs(query(collection(db, 'questions'), where('clientId','==',clientId)));
+  const questions = qSnap.docs.map(d => d.data());
+  const vSnap = await getDocs(query(collection(db, 'videos'), where('clientId','==',clientId)));
+  const pending = questions.filter(q => !q.answered).length;
+  const recent = logs.slice(-6).reverse();
+  document.getElementById('tOverview').innerHTML = `
+    <div class="welcome-banner">
+      <h2>👤 ${document.getElementById('trainerTopTitle').textContent}</h2>
+      <p>Active Client — Data syncing live</p>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${logs.length}</div><div class="stat-label">Workout Logs</div></div>
+      <div class="stat-box"><div class="stat-val">${pending}</div><div class="stat-label">Unanswered Q's</div></div>
+      <div class="stat-box"><div class="stat-val">${vSnap.size}</div><div class="stat-label">Videos Sent</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Recent Workout Activity</div>
+      ${recent.length ? recent.map(l=>`
+        <div class="activity-item">
+          <div><span class="hl">${esc(l.exercise)}</span><span style="color:var(--muted);margin-left:10px">${l.sets}×${l.reps} @ ${l.weight} kg</span></div>
+          <span style="color:var(--muted);font-size:11px">${l.date}</span>
+        </div>`).join('') : '<div style="color:var(--muted);font-size:13px;padding:12px 0">No workout logs yet.</div>'}
+    </div>
+    ${pending>0 ? `<div class="card" style="border-color:#ff6b3530"><div class="card-title" style="color:#ff8555">⚡ ${pending} Unanswered Question${pending>1?'s':''}</div><p style="font-size:13px;color:var(--muted)">Head to the Q&A tab to reply.</p></div>` : ''}
+  `;
+}
+
+function renderTProgress(logs) {
+  document.getElementById('tProgress').innerHTML = logs.length ? `
+    <div class="card">
+      <div class="card-title">All Workout Logs <span style="color:var(--muted);font-size:11px">${logs.length} total</span></div>
+      <table class="table">
+        <thead><tr><th>Date</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th></tr></thead>
+        <tbody>${logs.slice().reverse().map(l=>`<tr><td style="color:var(--muted)">${l.date}</td><td style="font-weight:600">${esc(l.exercise)}</td><td>${l.sets}</td><td>${l.reps}</td><td><span class="hl">${l.weight} kg</span></td></tr>`).join('')}</tbody>
+      </table>
+    </div>` : `<div class="empty"><div class="empty-icon">📊</div>No workout logs yet.</div>`;
+}
+
+async function loadTPlans(clientId) {
+  const snap = await getDoc(doc(db, 'plans', clientId));
+  const plan = snap.exists() ? snap.data() : {};
+  document.getElementById('tPlans').innerHTML = `
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title"><span>💪 Workout Plan</span><button class="btn btn-sm btn-outline" onclick="window.openEditPlan('workout')">Edit Plan</button></div>
+        <div class="plan-text">${plan.workout ? esc(plan.workout) : '<span style="color:var(--muted)">Not assigned yet.</span>'}</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>🥗 Diet Plan</span><button class="btn btn-sm btn-outline" onclick="window.openEditPlan('diet')">Edit Plan</button></div>
+        <div class="plan-text">${plan.diet ? esc(plan.diet) : '<span style="color:var(--muted)">Not assigned yet.</span>'}</div>
+      </div>
+    </div>`;
+}
+
+function renderTQA(qs) {
+  document.getElementById('tQA').innerHTML = qs.length ? qs.slice().reverse().map(q=>`
+    <div class="q-item">
+      <div class="q-meta">${q.date}<span class="badge ${q.answered?'badge-answered':'badge-pending'}">${q.answered?'Answered':'Pending'}</span></div>
+      <div class="q-text">${esc(q.question)}</div>
+      ${q.answered ? `<div class="q-answer"><strong>Coach Reply</strong>${esc(q.answer)}</div>` : `<button class="btn btn-sm btn-outline" onclick="window.openAnswerModal('${q.docId}','${esc(q.question).replace(/'/g,"\\'")}')">Reply →</button>`}
+    </div>`).join('') : `<div class="empty"><div class="empty-icon">💬</div>No questions yet.</div>`;
+}
+
+function renderTVideos(vids) {
+  document.getElementById('tVideos').innerHTML = vids.length ? `
+    <div class="card">
+      <div class="card-title">Submitted Videos <span style="color:var(--muted)">${vids.length} total</span></div>
+      ${vids.map(v=>`<div class="video-item"><div class="video-thumb">🎬</div><div><div style="font-weight:600;margin-bottom:4px">${esc(v.fileName)}</div><div style="font-size:11px;color:var(--muted)">${v.date} · ${v.size}</div>${v.note?`<div style="font-size:13px;color:#bbb;margin-top:6px">${esc(v.note)}</div>`:''}</div></div>`).join('')}
+    </div>` : `<div class="empty"><div class="empty-icon">🎬</div>No videos submitted yet.</div>`;
+}
+
+// ================================================================
+// TRAINER — ACTIONS
+// ================================================================
+window.addClient = async function() {
+  const name = document.getElementById('ncName').value.trim();
+  const username = document.getElementById('ncUsername').value.trim().toLowerCase();
+  const password = document.getElementById('ncPassword').value;
+  hide('addClientErr');
+  if (!name || !username || !password) { showErr('addClientErr','All fields are required.'); return; }
+  if (!/^[a-z0-9_]+$/.test(username)) { showErr('addClientErr','Username: only lowercase letters, numbers, underscores.'); return; }
+  const existing = await getDocs(query(collection(db,'users'), where('username','==',username)));
+  if (!existing.empty) { showErr('addClientErr','Username already taken.'); return; }
+  const id = 'c_' + Date.now();
+  await setDoc(doc(db,'users', id), { id, name, username, password, role:'client', createdAt: serverTimestamp() });
+  closeModal('addClientModal');
+  ['ncName','ncUsername','ncPassword'].forEach(i => document.getElementById(i).value='');
+};
+
+window.openEditPlan = async function(type) {
+  if (!selectedClientId) return;
+  editPlanType = type;
+  const snap = await getDoc(doc(db,'plans',selectedClientId));
+  const plan = snap.exists() ? snap.data() : {};
+  document.getElementById('editPlanTitle').textContent = type==='workout' ? '💪 Edit Workout Plan' : '🥗 Edit Diet Plan';
+  document.getElementById('editPlanLabel').textContent = type==='workout' ? 'Workout Plan Content' : 'Diet Plan Content';
+  document.getElementById('editPlanText').value = plan[type] || '';
+  openModal('editPlanModal');
+};
+
+window.savePlan = async function() {
+  const text = document.getElementById('editPlanText').value;
+  await setDoc(doc(db,'plans',selectedClientId), { [editPlanType]: text }, { merge: true });
+  closeModal('editPlanModal');
+  await loadTPlans(selectedClientId);
+  // Also update client plan view if they're looking
+  if (currentUser && currentUser.id === selectedClientId) {
+    document.getElementById(editPlanType==='workout' ? 'cWorkoutPlan' : 'cDietPlan').textContent = text || 'No plan assigned yet.';
+  }
+};
+
+window.openAnswerModal = function(qId, questionText) {
+  answerQId = qId;
+  document.getElementById('answerQPreview').textContent = questionText;
+  document.getElementById('answerText').value = '';
+  openModal('answerModal');
+};
+
+window.submitAnswer = async function() {
+  const answer = document.getElementById('answerText').value.trim();
+  if (!answer) return;
+  await updateDoc(doc(db,'questions',answerQId), { answer, answered: true, answeredAt: serverTimestamp() });
+  closeModal('answerModal');
+};
+
+// ================================================================
+// CLIENT — DASHBOARD
+// ================================================================
+async function loadClientDashboard() {
+  const id = currentUser.id;
+  // Load plans
+  const planSnap = await getDoc(doc(db,'plans',id));
+  const plan = planSnap.exists() ? planSnap.data() : {};
+  document.getElementById('cWorkoutPlan').textContent = plan.workout || 'No workout plan assigned yet. Check back soon!';
+  document.getElementById('cDietPlan').textContent = plan.diet || 'No diet plan assigned yet. Check back soon!';
+  // Real-time logs
+  const logsQ = query(collection(db,'logs'), where('clientId','==',id));
+  const logsUnsub = onSnapshot(logsQ, snap => {
+    const logs = snap.docs.map(d=>d.data()).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+    renderClientLogs(logs);
+    renderClientStats(logs);
+  });
+  unsubscribers.push(logsUnsub);
+  // Real-time questions (to see replies)
+  const qQ = query(collection(db,'questions'), where('clientId','==',id));
+  const qUnsub = onSnapshot(qQ, snap => {
+    const qs = snap.docs.map(d=>({...d.data(),docId:d.id})).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+    renderClientQAs(qs);
+  });
+  unsubscribers.push(qUnsub);
+  // Real-time plan updates (so client sees plan changes immediately)
+  const planUnsub = onSnapshot(doc(db,'plans',id), snap => {
+    if (!snap.exists()) return;
+    const p = snap.data();
+    document.getElementById('cWorkoutPlan').textContent = p.workout || 'No workout plan assigned yet.';
+    document.getElementById('cDietPlan').textContent = p.diet || 'No diet plan assigned yet.';
+  });
+  unsubscribers.push(planUnsub);
+  // Videos
+  const vids = await getDocs(query(collection(db,'videos'), where('clientId','==',id)));
+  renderClientVideoList(vids.docs.map(d=>d.data()).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0)));
+}
+
+// ================================================================
+// CLIENT — LOG WORKOUT
+// ================================================================
+window.addLog = async function() {
+  const exercise = document.getElementById('logExercise').value.trim();
+  const sets = parseInt(document.getElementById('logSets').value);
+  const reps = parseInt(document.getElementById('logReps').value);
+  const weight = parseFloat(document.getElementById('logWeight').value);
+  if (!exercise || !sets || !reps || isNaN(weight)) return;
+  await addDoc(collection(db,'logs'), {
+    clientId: currentUser.id, clientName: currentUser.name,
+    date: new Date().toLocaleDateString('en-GB'),
+    exercise, sets, reps, weight, timestamp: serverTimestamp()
+  });
+  ['logExercise','logSets','logReps','logWeight'].forEach(i => document.getElementById(i).value='');
+  show('logSuccess');
+  setTimeout(() => hide('logSuccess'), 3000);
+};
+
+function renderClientLogs(logs) {
+  const el = document.getElementById('recentLogs');
+  if (!logs.length) { el.innerHTML='<div class="empty" style="padding:32px"><div class="empty-icon">🏋️</div>No entries yet. Log your first workout!</div>'; return; }
+  el.innerHTML=`<table class="table"><thead><tr><th>Date</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th></tr></thead><tbody>${logs.slice(-10).reverse().map(l=>`<tr><td style="color:var(--muted)">${l.date}</td><td style="font-weight:600">${esc(l.exercise)}</td><td>${l.sets}</td><td>${l.reps}</td><td><span class="hl">${l.weight} kg</span></td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderClientStats(logs) {
+  const totalSets = logs.reduce((s,l)=>s+l.sets,0);
+  const unique = new Set(logs.map(l=>l.exercise.toLowerCase())).size;
+  document.getElementById('cStatGrid').innerHTML=`
+    <div class="stat-box"><div class="stat-val">${logs.length}</div><div class="stat-label">Sessions Logged</div></div>
+    <div class="stat-box"><div class="stat-val">${totalSets}</div><div class="stat-label">Total Sets Done</div></div>
+    <div class="stat-box"><div class="stat-val">${unique}</div><div class="stat-label">Exercises Tracked</div></div>`;
+  const allEl = document.getElementById('allLogsTable');
+  if (!logs.length) { allEl.innerHTML='<div class="empty" style="padding:32px">No logs yet.</div>'; return; }
+  allEl.innerHTML=`<table class="table"><thead><tr><th>Date</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th></tr></thead><tbody>${logs.slice().reverse().map(l=>`<tr><td style="color:var(--muted)">${l.date}</td><td style="font-weight:600">${esc(l.exercise)}</td><td>${l.sets}</td><td>${l.reps}</td><td><span class="hl">${l.weight} kg</span></td></tr>`).join('')}</tbody></table>`;
+}
+
+// ================================================================
+// CLIENT — ASK COACH
+// ================================================================
+window.submitQuestion = async function() {
+  const text = document.getElementById('questionText').value.trim();
+  if (!text) return;
+  await addDoc(collection(db,'questions'), {
+    clientId: currentUser.id, clientName: currentUser.name,
+    question: text, answer: '', answered: false,
+    date: new Date().toLocaleDateString('en-GB'), timestamp: serverTimestamp()
+  });
+  document.getElementById('questionText').value='';
+  show('qSuccess');
+  setTimeout(() => hide('qSuccess'), 3000);
+};
+
+function renderClientQAs(qs) {
+  const el = document.getElementById('clientQAs');
+  if (!qs.length) { el.innerHTML='<div class="empty"><div class="empty-icon">💬</div>No questions sent yet.</div>'; return; }
+  el.innerHTML = qs.slice().reverse().map(q=>`
+    <div class="q-item">
+      <div class="q-meta">${q.date}<span class="badge ${q.answered?'badge-answered':'badge-pending'}">${q.answered?'Answered':'Pending'}</span></div>
+      <div class="q-text">${esc(q.question)}</div>
+      ${q.answered?`<div class="q-answer"><strong>Coach Reply</strong>${esc(q.answer)}</div>`:'<div style="font-size:12px;color:var(--muted)">Awaiting reply...</div>'}
+    </div>`).join('');
+}
+
+// ================================================================
+// CLIENT — UPLOAD VIDEO
+// ================================================================
+window.uploadVideo = async function() {
+  const file = document.getElementById('videoFile').files[0];
+  const note = document.getElementById('videoNote').value.trim();
+  if (!file) { alert('Please select a video file first.'); return; }
+  await addDoc(collection(db,'videos'), {
+    clientId: currentUser.id, clientName: currentUser.name,
+    fileName: file.name, size: (file.size/1024/1024).toFixed(1)+' MB',
+    note, date: new Date().toLocaleDateString('en-GB'), timestamp: serverTimestamp()
+  });
+  document.getElementById('videoFile').value='';
+  document.getElementById('videoNote').value='';
+  show('videoSuccess');
+  setTimeout(() => hide('videoSuccess'), 3000);
+  const vids = await getDocs(query(collection(db,'videos'), where('clientId','==',currentUser.id)));
+  renderClientVideoList(vids.docs.map(d=>d.data()).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0)));
+};
+
+function renderClientVideoList(vids) {
+  const el = document.getElementById('clientVideoList');
+  if (!vids.length) { el.innerHTML=''; return; }
+  el.innerHTML=`<div class="card" style="margin-top:16px"><div class="card-title">Your Submitted Videos</div>${vids.map(v=>`<div class="video-item"><div class="video-thumb">🎬</div><div><div style="font-weight:600">${esc(v.fileName)}</div><div style="font-size:11px;color:var(--muted)">${v.date} · ${v.size}</div>${v.note?`<div style="font-size:13px;color:#bbb;margin-top:4px">${esc(v.note)}</div>`:''}</div></div>`).join('')}</div>`;
+}
+
+// ================================================================
+// UI HELPERS
+// ================================================================
+window.changePassword = async function() {
+  const current = document.getElementById('cpCurrent').value;
+  const newPass = document.getElementById('cpNew').value;
+  const confirm = document.getElementById('cpConfirm').value;
+  hide('cpError'); hide('cpSuccess');
+  if (!current || !newPass || !confirm) { showErr('cpError','All fields are required.'); return; }
+  if (current !== currentUser.password) { showErr('cpError','Current password is incorrect.'); return; }
+  if (newPass.length < 6) { showErr('cpError','New password must be at least 6 characters.'); return; }
+  if (newPass !== confirm) { showErr('cpError','New passwords do not match.'); return; }
+  await updateDoc(doc(db,'users', currentUser.id), { password: newPass });
+  currentUser.password = newPass;
+  show('cpSuccess');
+  document.getElementById('cpCurrent').value='';
+  document.getElementById('cpNew').value='';
+  document.getElementById('cpConfirm').value='';
+  setTimeout(() => { hide('cpSuccess'); closeModal('changePasswordModal'); }, 2000);
+};
+
+window.switchTab = function(el, id) {
+  document.querySelectorAll('#trainerTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#trainerView .tab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(id).classList.add('active');
+};
+
+window.switchClientTab = function(el, id) {
+  document.querySelectorAll('#clientTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#clientView .tab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(id).classList.add('active');
+};
+
+window.openModal = function(id) { document.getElementById(id).classList.remove('hidden'); };
+window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); };
+
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+function showErr(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.classList.remove('hidden'); }
+
+function showLoading(msg='Loading...') {
+  document.getElementById('loadingText').textContent = msg;
+  show('loadingOverlay');
+}
+function hideLoading() { hide('loadingOverlay'); }
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); });
+});
+
+// ================================================================
+// BOOT
+// ================================================================
+tryAutoConnect();
+</script>
+</body>
+</html>
