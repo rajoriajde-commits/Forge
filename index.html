@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORGE — Fitness Coaching Platform</title>
+<style>
+:root {
+  --bg: #080808;
+  --surface: #111111;
+  --surface2: #181818;
+  --border: #222222;
+  --accent: #c8ff00;
+  --text: #f0f0f0;
+  --muted: #555555;
+  --danger: #ff4444;
+  --success: #00cc66;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; min-height:100vh; }
+
+/* ===== SETUP SCREEN ===== */
+#setupScreen {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:var(--bg); padding:24px;
+}
+.setup-card {
+  background:var(--surface); border:1px solid var(--border);
+  padding:48px; width:680px; max-width:100%;
+}
+.setup-logo { font-size:36px; font-weight:900; color:var(--accent); letter-spacing:-2px; }
+.setup-sub { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-top:4px; margin-bottom:32px; }
+.steps { counter-reset:step; list-style:none; margin-bottom:32px; }
+.steps li {
+  counter-increment:step; padding:14px 16px 14px 52px; border:1px solid var(--border);
+  margin-bottom:8px; position:relative; line-height:1.6; font-size:13px; color:#ccc;
+}
+.steps li::before {
+  content:counter(step); position:absolute; left:14px; top:50%; transform:translateY(-50%);
+  width:24px; height:24px; background:var(--accent); color:#000; font-weight:900;
+  font-size:12px; display:flex; align-items:center; justify-content:center; border-radius:0;
+}
+.steps li strong { color:var(--text); }
+.steps li code { background:var(--bg); padding:2px 8px; font-size:12px; color:var(--accent); border:1px solid var(--border); }
+.config-area {
+  width:100%; background:var(--bg); border:1px solid var(--border); color:var(--accent);
+  padding:16px; font-family:'Courier New',monospace; font-size:12px; height:200px;
+  resize:none; outline:none; line-height:1.6;
+}
+.config-area:focus { border-color:var(--accent); }
+.setup-error { color:#ff7777; font-size:13px; margin-top:10px; min-height:20px; }
+.link { color:var(--accent); text-decoration:none; }
+.link:hover { text-decoration:underline; }
+
+/* ===== LOADING ===== */
+#loadingOverlay {
+  position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:999;
+}
+.spinner {
+  width:40px; height:40px; border:3px solid var(--border);
+  border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { margin-top:16px; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+
+/* ===== LOGIN ===== */
+#loginScreen { min-height:100vh; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+.bg-text { position:absolute; font-size:22vw; font-weight:900; color:#0f0f0f; letter-spacing:-3vw; user-select:none; pointer-events:none; top:50%; left:50%; transform:translate(-50%,-50%); white-space:nowrap; }
+.login-card { background:var(--surface); border:1px solid var(--border); padding:48px; width:400px; position:relative; z-index:1; animation:slideUp 0.4s ease; }
+.logo { font-size:36px; font-weight:900; color:var(--accent); letter-spacing:-2px; }
+.tagline { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-top:6px; margin-bottom:40px; }
+.hint { margin-top:28px; padding:16px; background:var(--surface2); border-left:3px solid var(--accent); font-size:12px; color:var(--muted); line-height:1.8; }
+.hint strong { color:var(--text); }
+
+/* ===== FORMS ===== */
+label { display:block; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+input[type=text],input[type=password],input[type=number],input[type=file],select,textarea {
+  width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+  padding:12px 14px; font-size:14px; font-family:inherit; outline:none; transition:border-color 0.2s;
+}
+input:focus,select:focus,textarea:focus { border-color:var(--accent); }
+textarea { resize:vertical; }
+.form-group { margin-bottom:18px; }
+
+/* ===== BUTTONS ===== */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:12px 24px; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; border:none; cursor:pointer; transition:all 0.15s; font-family:inherit; white-space:nowrap; }
+.btn-full { width:100%; }
+.btn-primary { background:var(--accent); color:#000; }
+.btn-primary:hover { background:#d8ff22; }
+.btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+.btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+.btn-sm { padding:7px 14px; font-size:10px; }
+.btn-danger { background:transparent; border:1px solid #ff444455; color:var(--danger); }
+.btn-danger:hover { border-color:var(--danger); background:#ff444410; }
+
+/* ===== LAYOUT ===== */
+.hidden { display:none !important; }
+#trainerView { display:none; height:100vh; overflow:hidden; }
+#trainerView:not(.hidden) { display:flex; }
+#clientView { display:none; flex-direction:column; height:100vh; }
+#clientView:not(.hidden) { display:flex; }
+
+/* ===== SIDEBAR ===== */
+.sidebar { width:250px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+.sidebar-header { padding:20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.sidebar-logo { font-size:24px; font-weight:900; color:var(--accent); letter-spacing:-1px; }
+.sidebar-section-title { padding:16px 20px 8px; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+.client-list { flex:1; overflow-y:auto; }
+.client-item { padding:14px 20px; cursor:pointer; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; transition:background 0.15s; border-left:3px solid transparent; }
+.client-item:hover { background:var(--surface2); }
+.client-item.active { background:var(--surface2); border-left-color:var(--accent); }
+.avatar { width:34px; height:34px; background:var(--accent); color:#000; font-weight:900; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.client-item-name { font-size:13px; font-weight:600; }
+.client-item-sub { font-size:11px; color:var(--muted); }
+.sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+
+/* ===== MAIN ===== */
+.main-content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.top-bar { padding:0 28px; height:62px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:var(--surface); }
+.top-bar-title { font-size:17px; font-weight:700; }
+.live-badge { display:inline-flex; align-items:center; gap:6px; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--success); }
+.live-dot { width:7px; height:7px; background:var(--success); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ===== TABS ===== */
+.tabs { display:flex; border-bottom:1px solid var(--border); padding:0 28px; flex-shrink:0; background:var(--surface); overflow-x:auto; }
+.tab { padding:16px 18px; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; white-space:nowrap; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-content { flex:1; overflow-y:auto; padding:28px; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; animation:fadeIn 0.25s ease; }
+
+/* ===== CARDS ===== */
+.card { background:var(--surface); border:1px solid var(--border); padding:22px; margin-bottom:18px; }
+.card-title { font-size:10px; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }
+.stat-box { background:var(--surface); border:1px solid var(--border); padding:22px; text-align:center; }
+.stat-val { font-size:42px; font-weight:900; color:var(--accent); line-height:1; letter-spacing:-2px; }
+.stat-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-top:8px; }
+
+/* ===== TABLE ===== */
+.table { width:100%; border-collapse:collapse; }
+.table th { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); }
+.table td { padding:11px 14px; border-bottom:1px solid var(--border); font-size:13px; }
+.table tr:last-child td { border-bottom:none; }
+.table tr:hover td { background:var(--surface2); }
+
+/* ===== Q&A ===== */
+.q-item { background:var(--surface2); border:1px solid var(--border); padding:18px; margin-bottom:12px; }
+.q-meta { font-size:11px; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:10px; }
+.q-text { font-size:14px; margin-bottom:14px; line-height:1.5; }
+.q-answer { background:var(--bg); border-left:3px solid var(--accent); padding:12px 16px; font-size:13px; color:#bbb; line-height:1.6; }
+.q-answer strong { color:var(--accent); font-size:10px; letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:6px; }
+.badge { display:inline-block; padding:3px 10px; font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.badge-pending { background:#ff6b3520; color:#ff8555; border:1px solid #ff6b3540; }
+.badge-answered { background:#00cc6620; color:#00cc66; border:1px solid #00cc6640; }
+
+/* ===== ALERTS ===== */
+.alert { padding:12px 16px; margin-bottom:16px; font-size:13px; line-height:1.4; }
+.alert-error { background:#ff444415; border:1px solid #ff444440; color:#ff7777; }
+.alert-success { background:#00cc6615; border:1px solid #00cc6640; color:#00cc66; }
+
+/* ===== OTHER ===== */
+.log-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1.2fr auto; gap:12px; align-items:flex-end; margin-bottom:22px; }
+.plan-text { white-space:pre-wrap; line-height:1.8; font-size:13px; color:#ccc; font-family:'Courier New',monospace; }
+.video-item { display:flex; align-items:center; gap:16px; padding:14px; background:var(--surface2); border:1px solid var(--border); margin-bottom:10px; }
+.video-thumb { width:64px; height:48px; background:#1c1c1c; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
+.activity-item { padding:12px 0; border-bottom:1px solid var(--border); font-size:13px; display:flex; align-items:center; justify-content:space-between; }
+.activity-item:last-child { border-bottom:none; }
+.hl { color:var(--accent); font-weight:700; }
+.streak-banner {
+  background: linear-gradient(135deg, #1a1a00 0%, #111 100%);
+  border: 1px solid #3a3a00;
+  border-left: 4px solid var(--accent);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.streak-fire { font-size: 52px; line-height: 1; }
+.streak-number { font-size: 64px; font-weight: 900; color: var(--accent); line-height: 1; letter-spacing: -3px; }
+.streak-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.streak-msg { font-size: 13px; color: #ccc; margin-top: 6px; line-height: 1.5; }
+.streak-days { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+.streak-day {
+  width: 32px; height: 32px; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--muted); flex-direction: column; gap: 1px;
+}
+.streak-day.done { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 700; }
+.streak-day.today { border-color: var(--accent); color: var(--accent); }
+.streak-zero { font-size: 48px; font-weight: 900; color: var(--muted); line-height: 1; }
+.welcome-banner { background:linear-gradient(135deg,#1a1a0a 0%,#111 100%); border:1px solid #2a2a00; border-left:4px solid var(--accent); padding:20px 24px; margin-bottom:20px; }
+.welcome-banner h2 { font-size:20px; font-weight:900; margin-bottom:4px; }
+.welcome-banner p { font-size:13px; color:var(--muted); }
+.macro-bar-wrap { margin-bottom:12px; }
+.macro-bar-label { display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; }
+.macro-bar-track { height:6px; background:var(--border); overflow:hidden; }
+.macro-bar-fill { height:100%; transition:width 0.4s ease; }
+.macro-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+.macro-pill { background:var(--surface2); border:1px solid var(--border); padding:14px; text-align:center; }
+.macro-pill-val { font-size:22px; font-weight:900; color:var(--accent); line-height:1; }
+.macro-pill-label { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-top:4px; }
+.meal-item { display:flex; align-items:flex-start; gap:14px; padding:14px 0; border-bottom:1px solid var(--border); }
+.meal-item:last-child { border-bottom:none; }
+.meal-thumb { width:60px; height:60px; background:var(--surface2); border:1px solid var(--border); object-fit:cover; flex-shrink:0; }
+.meal-thumb-placeholder { width:60px; height:60px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
+.meal-macros { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.meal-macro-tag { font-size:10px; padding:2px 8px; border:1px solid var(--border); color:var(--muted); }
+.ai-food-item { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.ai-food-item:last-child { border-bottom:none; }
+.empty { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-icon { font-size:52px; margin-bottom:16px; }
+.client-header { padding:0 28px; height:62px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+
+/* ===== MODAL ===== */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,0.88); display:flex; align-items:center; justify-content:center; z-index:200; animation:fadeIn 0.2s ease; }
+.modal-box { background:var(--surface); border:1px solid #333; padding:38px; width:500px; max-width:95vw; max-height:90vh; overflow-y:auto; animation:slideUp 0.25s ease; }
+.modal-title { font-size:22px; font-weight:900; margin-bottom:28px; letter-spacing:-0.5px; }
+
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#2a2a2a}
+</style>
+</head>
+<body>
+
+<!-- ======== SETUP SCREEN ======== -->
+<div id="setupScreen" class="hidden">
+  <div class="setup-card">
+    <div class="setup-logo">FORGE</div>
+    <div class="setup-sub">Firebase Setup Required</div>
+    <ol class="steps">
+      <li>Go to <a class="link" href="https://console.firebase.google.com" target="_blank"><strong>console.firebase.google.com</strong></a> and sign in with Google</li>
+      <li>Click <strong>Add Project</strong> → name it <code>forge-coaching</code> → click through and create</li>
+      <li>In the left sidebar click <strong>Firestore Database</strong> → <strong>Create database</strong> → choose <strong>Start in test mode</strong> → pick any region → Done</li>
+      <li>Click the <strong>⚙️ gear icon</strong> (top left) → <strong>Project settings</strong> → scroll to <strong>Your apps</strong> → click <code>&lt;/&gt;</code> Web icon → register app with any name</li>
+      <li>Copy the <strong>firebaseConfig</strong> object shown and paste it below</li>
+    </ol>
+    <div class="form-group">
+      <label>Paste your Firebase Config JSON here</label>
+      <textarea class="config-area" id="configInput" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-app-id",
+  "storageBucket": "your-app.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123:web:abc123"
+}'></textarea>
+    </div>
+    <div class="setup-error" id="setupError"></div>
+    <button class="btn btn-primary" onclick="connectFirebase()">Connect &amp; Launch App →</button>
+    <div class="hint" style="margin-top:24px">
+      <strong>After setup:</strong> Host this file on <a class="link" href="https://app.netlify.com/drop" target="_blank">Netlify Drop</a> (free) and share the link with your clients. Everyone's data syncs in real time.
+    </div>
+  </div>
+</div>
+
+<!-- ======== LOADING ======== -->
+<div id="loadingOverlay" class="hidden">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Connecting...</div>
+</div>
+
+<!-- ======== LOGIN SCREEN ======== -->
+<div id="loginScreen" class="hidden">
+  <div class="bg-text">FORGE</div>
+  <div class="login-card">
+    <div class="logo">FORGE</div>
+    <div class="tagline">Fitness Coaching Platform</div>
+    <div id="loginError" class="alert alert-error hidden"></div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Enter your username" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Enter your password">
+    </div>
+    <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">Login →</button>
+  </div>
+</div>
+
+<!-- ======== TRAINER VIEW ======== -->
+<div id="trainerView" class="hidden">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">FORGE</span>
+      <button class="btn btn-sm btn-outline" onclick="logout()">Exit</button>
+    </div>
+    <div class="sidebar-section-title">Clients</div>
+    <div class="client-list" id="clientList"></div>
+    <div class="sidebar-footer">
+      <button class="btn btn-primary btn-sm" onclick="openModal('addClientModal')">+ Add Client</button>
+      <button class="btn btn-outline btn-sm" onclick="openModal('changePasswordModal')">⚙ Change Password</button>
+    </div>
+  </div>
+  <div class="main-content">
+    <div class="top-bar">
+      <div class="top-bar-title" id="trainerTopTitle">Select a Client</div>
+      <div class="live-badge"><div class="live-dot"></div>Live Sync</div>
+    </div>
+    <div class="tabs" id="trainerTabs">
+      <div class="tab active" onclick="switchTab(this,'tOverview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'tProgress')">Progress</div>
+      <div class="tab" onclick="switchTab(this,'tPlans')">Plans</div>
+      <div class="tab" onclick="switchTab(this,'tQA')">Q &amp; A</div>
+      <div class="tab" onclick="switchTab(this,'tVideos')">Videos</div>
+      <div class="tab" onclick="switchTab(this,'tNutrition')">🥦 Nutrition</div>
+      <div class="tab" onclick="switchTab(this,'tMeals')">🍽 Meals</div>
+    </div>
+    <div class="tab-content">
+      <div id="tOverview" class="tab-panel active"><div class="empty"><div class="empty-icon">👥</div>Select a client from the sidebar</div></div>
+      <div id="tProgress" class="tab-panel"><div class="empty"><div class="empty-icon">📊</div>Select a client to view their progress</div></div>
+      <div id="tPlans" class="tab-panel"><div class="empty"><div class="empty-icon">📋</div>Select a client to manage plans</div></div>
+      <div id="tQA" class="tab-panel"><div class="empty"><div class="empty-icon">💬</div>Select a client to view questions</div></div>
+      <div id="tVideos" class="tab-panel"><div class="empty"><div class="empty-icon">🎬</div>Select a client to view videos</div></div>
+      <div id="tNutrition" class="tab-panel"></div>
+      <div id="tMeals" class="tab-panel"><div class="empty"><div class="empty-icon">🍽</div>Select a client to view their meals</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== CLIENT VIEW ======== -->
+<div id="clientView" class="hidden">
+  <div class="client-header">
+    <div style="display:flex;align-items:center;gap:16px">
+      <span style="font-size:22px;font-weight:900;color:var(--accent);letter-spacing:-1px">FORGE</span>
+      <span style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">Training Platform</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="live-badge"><div class="live-dot"></div>Live</div>
+      <div style="text-align:right">
+        <div id="cUserName" style="font-size:13px;font-weight:600"></div>
+        <div style="font-size:11px;color:var(--muted)">Client</div>
+      </div>
+      <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="tabs" id="clientTabs">
+    <div class="tab active" onclick="switchClientTab(this,'cPlan')">My Plan</div>
+    <div class="tab" onclick="switchClientTab(this,'cLog')">Log Workout</div>
+    <div class="tab" onclick="switchClientTab(this,'cProgress')">Progress</div>
+    <div class="tab" onclick="switchClientTab(this,'cAsk')">Ask Coach</div>
+    <div class="tab" onclick="switchClientTab(this,'cVideo')">Upload Video</div>
+    <div class="tab" onclick="switchClientTab(this,'cNutrition');if(!window._clientNutritionInit){window._clientNutritionInit=true;window.renderNutritionUI('nutritionLookupUI');}">🥦 Nutrition</div>
+    <div class="tab" onclick="switchClientTab(this,'cMeals')">🍽 Meals</div>
+  </div>
+  <div class="tab-content" style="flex:1;overflow-y:auto">
+    <div id="cPlan" class="tab-panel active">
+      <div id="clientStreakBanner"></div>
+      <div class="two-col">
+        <div class="card"><div class="card-title">💪 Workout Plan</div><div class="plan-text" id="cWorkoutPlan">Loading...</div></div>
+        <div class="card"><div class="card-title">🥗 Diet Plan</div><div class="plan-text" id="cDietPlan">Loading...</div></div>
+      </div>
+    </div>
+    <div id="cLog" class="tab-panel">
+      <div class="card">
+        <div class="card-title">Log Today's Workout</div>
+        <div class="log-grid">
+          <div class="form-group" style="margin:0"><label>Exercise</label><input type="text" id="logExercise" placeholder="e.g. Bench Press"></div>
+          <div class="form-group" style="margin:0"><label>Sets</label><input type="number" id="logSets" placeholder="3" min="1"></div>
+          <div class="form-group" style="margin:0"><label>Reps</label><input type="number" id="logReps" placeholder="10" min="1"></div>
+          <div class="form-group" style="margin:0"><label>Weight (kg)</label><input type="number" id="logWeight" placeholder="60" min="0" step="0.5"></div>
+          <button class="btn btn-primary" onclick="addLog()" style="margin-top:20px;height:44px">Add</button>
+        </div>
+        <div id="logSuccess" class="alert alert-success hidden">✓ Workout logged — your coach can see it now!</div>
+      </div>
+      <div class="card"><div class="card-title">Recent Entries</div><div id="recentLogs"></div></div>
+    </div>
+    <div id="cProgress" class="tab-panel">
+      <div class="stat-grid" id="cStatGrid"></div>
+      <div class="card"><div class="card-title">All Workout Logs</div><div id="allLogsTable"></div></div>
+    </div>
+    <div id="cAsk" class="tab-panel">
+      <div class="card">
+        <div class="card-title">Ask Your Coach</div>
+        <div class="form-group"><label>Your Question</label><textarea id="questionText" rows="4" placeholder="Type your question here..."></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="submitQuestion()">Send Question →</button>
+        <div id="qSuccess" class="alert alert-success hidden" style="margin-top:14px">✓ Sent! Your coach will reply soon.</div>
+      </div>
+      <div id="clientQAs"></div>
+    </div>
+    <div id="cVideo" class="tab-panel">
+      <div class="card">
+        <div class="card-title">Submit Workout Video</div>
+        <div class="form-group"><label>Select Video File</label><input type="file" id="videoFile" accept="video/*"></div>
+        <div class="form-group"><label>Notes for your coach</label><textarea id="videoNote" rows="2" placeholder="e.g. Week 3 – Squat form check"></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="uploadVideo()">Submit Video →</button>
+        <div id="videoSuccess" class="alert alert-success hidden" style="margin-top:14px">✓ Submitted! Your coach has been notified.</div>
+        <p style="margin-top:14px;font-size:12px;color:var(--muted)">ℹ Video metadata is stored. Share the actual file with your coach via WhatsApp or email.</p>
+      </div>
+      <div id="clientVideoList"></div>
+    </div>
+
+    <div id="cNutrition" class="tab-panel" id="cNutrition">
+      <div id="nutritionLookupUI"></div>
+    </div>
+
+    <!-- MEAL LOGGING TAB -->
+    <div id="cMeals" class="tab-panel">
+      <!-- Daily macro summary -->
+      <div id="mealDailySummary"></div>
+      <!-- Photo upload card -->
+      <div class="card">
+        <div class="card-title">📸 Log a Meal — AI Macro Analysis</div>
+        <div id="mealPhotoPreview" style="display:none;margin-bottom:16px">
+          <img id="mealPreviewImg" style="max-width:100%;max-height:220px;border:1px solid var(--border);object-fit:cover" />
+        </div>
+        <div class="form-group">
+          <label>Take or Upload a Food Photo</label>
+          <input type="file" id="mealPhotoInput" accept="image/*" capture="environment" onchange="window.previewMealPhoto(this)">
+        </div>
+        <div class="form-group">
+          <label>Meal Name (optional — helps AI)</label>
+          <input type="text" id="mealNameInput" placeholder="e.g. Chicken rice bowl, Pasta bolognese">
+        </div>
+        <div class="form-group">
+          <label>Portion / Extra Notes (optional)</label>
+          <input type="text" id="mealNotesInput" placeholder="e.g. Large portion, with extra sauce">
+        </div>
+        <button class="btn btn-primary" id="mealAnalyzeBtn" onclick="window.analyzeMealPhoto()">🤖 Analyze with AI →</button>
+        <div id="mealAnalyzing" class="hidden" style="margin-top:14px;display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px">
+          <div class="spinner" style="width:20px;height:20px;border-width:2px"></div>
+          Analyzing your meal...
+        </div>
+        <!-- AI Result -->
+        <div id="mealAIResult" class="hidden" style="margin-top:18px">
+          <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">AI Analysis Result</div>
+          <div id="mealResultContent"></div>
+          <div style="margin-top:16px;display:flex;gap:10px">
+            <button class="btn btn-primary btn-sm" onclick="window.confirmLogMeal()">✓ Log This Meal</button>
+            <button class="btn btn-outline btn-sm" onclick="window.resetMealForm()">Try Again</button>
+          </div>
+        </div>
+      </div>
+      <!-- Today's meals list -->
+      <div class="card">
+        <div class="card-title">Today's Meals</div>
+        <div id="todaysMealsList"></div>
+      </div>
+      <!-- Past meals -->
+      <div class="card">
+        <div class="card-title" style="cursor:pointer" onclick="window.togglePastMeals()">Past Meals <span id="pastMealsToggle" style="color:var(--accent)">▼ Show</span></div>
+        <div id="pastMealsList" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== MODALS ======== -->
+<div id="deleteClientModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-title">⚠️ Delete Client</div>
+    <p style="font-size:14px;color:#ccc;margin-bottom:12px">You are about to delete <strong id="deleteClientName" style="color:var(--accent)"></strong>.</p>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:24px">This will permanently remove their account, all workout logs, questions, videos and plans. This cannot be undone.</p>
+    <div id="deleteClientErr" class="alert alert-error hidden"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-danger" id="confirmDeleteBtn" onclick="window.executeDeleteClient()">Yes, Delete Permanently</button>
+      <button class="btn btn-outline" onclick="closeModal('deleteClientModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="changePasswordModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-title">Change Trainer Password</div>
+    <div class="form-group"><label>Current Password</label><input type="password" id="cpCurrent" placeholder="Enter current password"></div>
+    <div class="form-group"><label>New Password</label><input type="password" id="cpNew" placeholder="Enter new password"></div>
+    <div class="form-group"><label>Confirm New Password</label><input type="password" id="cpConfirm" placeholder="Repeat new password"></div>
+    <div id="cpError" class="alert alert-error hidden"></div>
+    <div id="cpSuccess" class="alert alert-success hidden">✓ Password updated successfully!</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+      <button class="btn btn-outline" onclick="closeModal('changePasswordModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="addClientModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-title">Add New Client</div>
+    <div class="form-group"><label>Full Name</label><input type="text" id="ncName" placeholder="e.g. John Smith"></div>
+    <div class="form-group"><label>Email (for reminders)</label><input type="text" id="ncEmail" placeholder="e.g. john@gmail.com"></div>
+    <div class="form-group"><label>Username (for login)</label><input type="text" id="ncUsername" placeholder="e.g. john"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="ncPassword" placeholder="Set a password"></div>
+    <div id="addClientErr" class="alert alert-error hidden"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="addClient()">Create Client</button>
+      <button class="btn btn-outline" onclick="closeModal('addClientModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="editPlanModal" class="modal hidden">
+  <div class="modal-box" style="width:620px">
+    <div class="modal-title" id="editPlanTitle">Edit Plan</div>
+    <div class="form-group"><label id="editPlanLabel">Content</label><textarea id="editPlanText" rows="14" style="font-family:'Courier New',monospace;font-size:13px"></textarea></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="savePlan()">Save Plan</button>
+      <button class="btn btn-outline" onclick="closeModal('editPlanModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="answerModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-title">Answer Question</div>
+    <div style="background:var(--bg);border:1px solid var(--border);padding:16px;margin-bottom:22px;font-size:14px;line-height:1.6;color:#ccc" id="answerQPreview"></div>
+    <div class="form-group"><label>Your Answer</label><textarea id="answerText" rows="5" placeholder="Type your reply..."></textarea></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="submitAnswer()">Send Answer</button>
+      <button class="btn btn-outline" onclick="closeModal('answerModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ================================================================
+// FIREBASE CONFIG — Pre-configured
+// ================================================================
+const EMBEDDED_CONFIG = {
+  apiKey: "AIzaSyBOZyu7IywzwkE8CIl6Rz5vyKuEwd6Gr7s",
+  authDomain: "forge-c887f.firebaseapp.com",
+  projectId: "forge-c887f",
+  storageBucket: "forge-c887f.firebasestorage.app",
+  messagingSenderId: "424871697943",
+  appId: "1:424871697943:web:e109989c4204523fda0652"
+};
+
+// ================================================================
+// FIREBASE IMPORTS
+// ================================================================
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc,
+  updateDoc, query, where, orderBy, onSnapshot, serverTimestamp, limit, deleteDoc
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ================================================================
+// STATE
+// ================================================================
+let db = null;
+let currentUser = null;
+let selectedClientId = null;
+let editPlanType = null;
+let answerQId = null;
+let unsubscribers = [];
+
+// ================================================================
+// SETUP — Connect Firebase
+// ================================================================
+window.connectFirebase = async function() {
+  const raw = document.getElementById('configInput').value.trim();
+  const errEl = document.getElementById('setupError');
+  errEl.textContent = '';
+  try {
+    const config = JSON.parse(raw);
+    if (!config.apiKey || !config.projectId) throw new Error('Missing apiKey or projectId');
+    showLoading('Connecting to Firebase...');
+    const app = initializeApp(config);
+    db = getFirestore(app);
+    // Test connection by checking users collection
+    await getDocs(query(collection(db, 'users'), limit(1)));
+    localStorage.setItem('forge_fb_config', JSON.stringify(config));
+    await seedIfEmpty();
+    hideLoading();
+    hide('setupScreen');
+    show('loginScreen');
+  } catch (e) {
+    hideLoading();
+    errEl.textContent = 'Error: ' + e.message + '. Check your config and try again.';
+  }
+};
+
+async function tryAutoConnect() {
+  try {
+    showLoading('Connecting to FORGE...');
+    const app = initializeApp(EMBEDDED_CONFIG);
+    db = getFirestore(app);
+    await getDocs(query(collection(db, 'users'), limit(1)));
+    await seedIfEmpty();
+    hideLoading();
+    show('loginScreen');
+  } catch (e) {
+    document.getElementById('loadingText').textContent = 'Connection failed. Check your internet and refresh the page.';
+  }
+}
+
+// ================================================================
+// SEED DEFAULT DATA
+// ================================================================
+async function seedIfEmpty() {
+  const snap = await getDocs(query(collection(db, 'users'), limit(1)));
+  if (!snap.empty) return;
+  // Create default trainer
+  await setDoc(doc(db, 'users', 'trainer'), {
+    id: 'trainer', name: 'Coach', username: 'trainer',
+    password: 'forge123', role: 'trainer', createdAt: serverTimestamp()
+  });
+}
+
+// ================================================================
+// AUTH
+// ================================================================
+window.login = async function() {
+  const username = document.getElementById('loginUser').value.trim().toLowerCase();
+  const password = document.getElementById('loginPass').value;
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Logging in...';
+  hide('loginError');
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
+    if (snap.empty) { showErr('loginError', 'Invalid username or password.'); btn.disabled=false; btn.textContent='Login →'; return; }
+    const userDoc = snap.docs[0].data();
+    if (userDoc.password !== password) { showErr('loginError', 'Invalid username or password.'); btn.disabled=false; btn.textContent='Login →'; return; }
+    currentUser = userDoc;
+    hide('loginScreen');
+    btn.disabled=false; btn.textContent='Login →';
+    if (userDoc.role === 'trainer') {
+      show('trainerView');
+      await loadClientList();
+      listenClients();
+    } else {
+      show('clientView');
+      document.getElementById('cUserName').textContent = userDoc.name;
+      await loadClientDashboard();
+    }
+  } catch(e) {
+    showErr('loginError', 'Connection error. Try again.');
+    btn.disabled=false; btn.textContent='Login →';
+  }
+};
+
+window.logout = function() {
+  cleanupListeners();
+  currentUser = null; selectedClientId = null;
+  hide('trainerView'); hide('clientView');
+  show('loginScreen');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  hide('loginError');
+};
+
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') window.login(); });
+document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') window.login(); });
+
+function cleanupListeners() {
+  unsubscribers.forEach(fn => fn());
+  unsubscribers = [];
+}
+
+// ================================================================
+// TRAINER — CLIENT LIST
+// ================================================================
+function listenClients() {
+  const q = query(collection(db, 'users'), where('role', '==', 'client'));
+  const unsub = onSnapshot(q, snap => {
+    const clients = snap.docs.map(d => d.data()).sort((a,b) => a.name.localeCompare(b.name));
+    renderClientList(clients);
+  });
+  unsubscribers.push(unsub);
+}
+
+async function loadClientList() {
+  const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'client')));
+  renderClientList(snap.docs.map(d => d.data()).sort((a,b) => a.name.localeCompare(b.name)));
+}
+
+function renderClientList(clients) {
+  document.getElementById('clientList').innerHTML = clients.map(c => `
+    <div class="client-item ${selectedClientId === c.id ? 'active' : ''}" onclick="window.selectClient('${c.id}','${esc(c.name)}')">
+      <div class="avatar" style="font-size:13px">${c.name.charAt(0)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="client-item-name">${esc(c.name)}</div>
+        <div class="client-item-sub">@${esc(c.username)}</div>
+      </div>
+      <div onclick="event.stopPropagation(); window.confirmDeleteClient('${c.id}','${esc(c.name)}')" title="Delete client"
+        style="color:var(--muted);font-size:16px;padding:4px 6px;cursor:pointer;flex-shrink:0;line-height:1;border-radius:2px;"
+        onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color='var(--muted)'">✕</div>
+    </div>
+  `).join('') || '<div style="padding:20px;color:var(--muted);font-size:13px">No clients yet</div>';
+}
+
+window.selectClient = async function(id, name) {
+  selectedClientId = id;
+  document.getElementById('trainerTopTitle').textContent = name;
+  // Cleanup previous client listeners
+  cleanupListeners();
+  listenClients();
+  // Setup real-time listeners for selected client
+  listenClientLogs(id);
+  listenClientQuestions(id);
+  listenClientVideos(id);
+  await loadTPlans(id);
+  await loadTMeals(id);
+  renderNutritionUI('tNutrition');
+  // Highlight active
+  document.querySelectorAll('.client-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget && event.currentTarget.classList.add('active');
+};
+
+// ================================================================
+// TRAINER — REAL-TIME LISTENERS
+// ================================================================
+function listenClientLogs(clientId) {
+  const q = query(collection(db, 'logs'), where('clientId', '==', clientId));
+  const unsub = onSnapshot(q, snap => {
+    const logs = snap.docs.map(d=>({...d.data(), docId:d.id})).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+    renderTOverview(clientId, logs);
+    renderTProgress(logs);
+  });
+  unsubscribers.push(unsub);
+}
+
+function listenClientQuestions(clientId) {
+  const q = query(collection(db, 'questions'), where('clientId', '==', clientId));
+  const unsub = onSnapshot(q, snap => {
+    const qs = snap.docs.map(d=>({...d.data(), docId:d.id})).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+    renderTQA(qs);
+    // refresh overview stats
+    const logsSub = document.getElementById('tOverview').querySelector('.stat-val');
+    if (logsSub) { /* overview re-renders from logs listener */ }
+  });
+  unsubscribers.push(unsub);
+}
+
+function listenClientVideos(clientId) {
+  const q = query(collection(db, 'videos'), where('clientId', '==', clientId));
+  const unsub = onSnapshot(q, snap => {
+    const vids = snap.docs.map(d=>({...d.data(), docId:d.id})).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+    renderTVideos(vids);
+  });
+  unsubscribers.push(unsub);
+}
+
+// ================================================================
+// TRAINER — RENDER
+// ================================================================
+async function renderTOverview(clientId, logs) {
+  const qSnap = await getDocs(query(collection(db, 'questions'), where('clientId','==',clientId)));
+  const questions = qSnap.docs.map(d => d.data());
+  const vSnap = await getDocs(query(collection(db, 'videos'), where('clientId','==',clientId)));
+  const pending = questions.filter(q => !q.answered).length;
+  const recent = logs.slice(-6).reverse();
+  const { streak, longestStreak } = calcStreak(logs);
+  const clientSnap = await getDoc(doc(db,'users', clientId));
+  const clientData = clientSnap.exists() ? clientSnap.data() : {};
+  const clientEmail = clientData.email || '';
+  const clientName = document.getElementById('trainerTopTitle').textContent;
+  document.getElementById('tOverview').innerHTML = `
+    <div class="welcome-banner">
+      <h2>👤 ${esc(clientName)}</h2>
+      <p>@${esc(clientData.username||'')} — Active Client ${clientEmail ? '· '+esc(clientEmail) : ''}</p>
+    </div>
+    <div class="streak-banner" style="margin-bottom:20px">
+      <div class="streak-fire">${streak>0?'🔥':'💤'}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <div class="${streak>0?'streak-number':'streak-zero'}">${streak}</div>
+          <div>
+            <div style="font-size:15px;font-weight:700">Day Streak</div>
+            <div class="streak-label">Best: ${longestStreak} days</div>
+          </div>
+        </div>
+        <div class="streak-msg">${getStreakMessage(streak)}</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="window.sendReminder('${esc(clientName)}','${esc(clientEmail)}')">
+        📧 Send Reminder
+      </button>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${logs.length}</div><div class="stat-label">Workout Logs</div></div>
+      <div class="stat-box"><div class="stat-val">${pending}</div><div class="stat-label">Unanswered Q's</div></div>
+      <div class="stat-box"><div class="stat-val">${vSnap.size}</div><div class="stat-label">Videos Sent</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Recent Workout Activity</div>
+      ${recent.length ? recent.map(l=>`
+        <div class="activity-item">
+          <div><span class="hl">${esc(l.exercise)}</span><span style="color:var(--muted);margin-left:10px">${l.sets}×${l.reps} @ ${l.weight} kg</span></div>
+          <span style="color:var(--muted);font-size:11px">${l.date}</span>
+        </div>`).join('') : '<div style="color:var(--muted);font-size:13px;padding:12px 0">No workout logs yet.</div>'}
+    </div>
+    ${pending>0 ? `<div class="card" style="border-color:#ff6b3530"><div class="card-title" style="color:#ff8555">⚡ ${pending} Unanswered Question${pending>1?'s':''}</div><p style="font-size:13px;color:var(--muted)">Head to the Q&A tab to reply.</p></div>` : ''}
+  `;
+}
+
+function renderTProgress(logs) {
+  document.getElementById('tProgress').innerHTML = logs.length ? `
+    <div class="card">
+      <div class="card-title">All Workout Logs <span style="color:var(--muted);font-size:11px">${logs.length} total</span></div>
+      <table class="table">
+        <thead><tr><th>Date</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th></tr></thead>
+        <tbody>${logs.slice().reverse().map(l=>`<tr><td style="color:var(--muted)">${l.date}</td><td style="font-weight:600">${esc(l.exercise)}</td><td>${l.sets}</td><td>${l.reps}</td><td><span class="hl">${l.weight} kg</span></td></tr>`).join('')}</tbody>
+      </table>
+    </div>` : `<div class="empty"><div class="empty-icon">📊</div>No workout logs yet.</div>`;
+}
+
+async function loadTPlans(clientId) {
+  const snap = await getDoc(doc(db, 'plans', clientId));
+  const plan = snap.exists() ? snap.data() : {};
+  document.getElementById('tPlans').innerHTML = `
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title"><span>💪 Workout Plan</span><button class="btn btn-sm btn-outline" onclick="window.openEditPlan('workout')">Edit Plan</button></div>
+        <div class="plan-text">${plan.workout ? esc(plan.workout) : '<span style="color:var(--muted)">Not assigned yet.</span>'}</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>🥗 Diet Plan</span><button class="btn btn-sm btn-outline" onclick="window.openEditPlan('diet')">Edit Plan</button></div>
+        <div class="plan-text">${plan.diet ? esc(plan.diet) : '<span style="color:var(--muted)">Not assigned yet.</span>'}</div>
+      </div>
+    </div>`;
+}
+
+function renderTQA(qs) {
+  document.getElementById('tQA').innerHTML = qs.length ? qs.slice().reverse().map(q=>`
+    <div class="q-item">
+      <div class="q-meta">${q.date}<span class="badge ${q.answered?'badge-answered':'badge-pending'}">${q.answered?'Answered':'Pending'}</span></div>
+      <div class="q-text">${esc(q.question)}</div>
+      ${q.answered ? `<div class="q-answer"><strong>Coach Reply</strong>${esc(q.answer)}</div>` : `<button class="btn btn-sm btn-outline" onclick="window.openAnswerModal('${q.docId}','${esc(q.question).replace(/'/g,"\\'")}')">Reply →</button>`}
+    </div>`).join('') : `<div class="empty"><div class="empty-icon">💬</div>No questions yet.</div>`;
+}
+
+function renderTVideos(vids) {
+  document.getElementById('tVideos').innerHTML = vids.length ? `
+    <div class="card">
+      <div class="card-title">Submitted Videos <span style="color:var(--muted)">${vids.length} total</span></div>
+      ${vids.map(v=>`<div class="video-item"><div class="video-thumb">🎬</div><div><div style="font-weight:600;margin-bottom:4px">${esc(v.fileName)}</div><div style="font-size:11px;color:var(--muted)">${v.date} · ${v.size}</div>${v.note?`<div style="font-size:13px;color:#bbb;margin-top:6px">${esc(v.note)}</div>`:''}</div></div>`).join('')}
+    </div>` : `<div class="empty"><div class="empty-icon">🎬</div>No videos submitted yet.</div>`;
+}
+
+// ================================================================
+// TRAINER — ACTIONS
+// ================================================================
+window.addClient = async function() {
+  const name = document.getElementById('ncName').value.trim();
+  const email = document.getElementById('ncEmail').value.trim().toLowerCase();
+  const username = document.getElementById('ncUsername').value.trim().toLowerCase();
+  const password = document.getElementById('ncPassword').value;
+  hide('addClientErr');
+  if (!name || !username || !password) { showErr('addClientErr','Name, username and password are required.'); return; }
+  if (!/^[a-z0-9_]+$/.test(username)) { showErr('addClientErr','Username: only lowercase letters, numbers, underscores.'); return; }
+  const existing = await getDocs(query(collection(db,'users'), where('username','==',username)));
+  if (!existing.empty) { showErr('addClientErr','Username already taken.'); return; }
+  const id = 'c_' + Date.now();
+  await setDoc(doc(db,'users', id), { id, name, email, username, password, role:'client', createdAt: serverTimestamp() });
+  closeModal('addClientModal');
+  ['ncName','ncEmail','ncUsername','ncPassword'].forEach(i => document.getElementById(i).value='');
+};
+
+window.openEditPlan = async function(type) {
+  if (!selectedClientId) return;
+  editPlanType = type;
+  const snap = await getDoc(doc(db,'plans',selectedClientId));
+  const plan = snap.exists() ? snap.data() : {};
+  document.getElementById('editPlanTitle').textContent = type==='workout' ? '💪 Edit Workout Plan' : '🥗 Edit Diet Plan';
+  document.getElementById('editPlanLabel').textContent = type==='workout' ? 'Workout Plan Content' : 'Diet Plan Content';
+  document.getElementById('editPlanText').value = plan[type] || '';
+  openModal('editPlanModal');
+};
+
+window.savePlan = async function() {
+  const text = document.getElementById('editPlanText').value;
+  await setDoc(doc(db,'plans',selectedClientId), { [editPlanType]: text }, { merge: true });
+  closeModal('editPlanModal');
+  await loadTPlans(selectedClientId);
+  // Also update client plan view if they're looking
+  if (currentUser && currentUser.id === selectedClientId) {
+    document.getElementById(editPlanType==='workout' ? 'cWorkoutPlan' : 'cDietPlan').textContent = text || 'No plan assigned yet.';
+  }
+};
+
+window.openAnswerModal = function(qId, questionText) {
+  answerQId = qId;
+  document.getElementById('answerQPreview').textContent = questionText;
+  document.getElementById('answerText').value = '';
+  openModal('answerModal');
+};
+
+window.submitAnswer = async function() {
+  const answer = document.getElementById('answerText').value.trim();
+  if (!answer) return;
+  await updateDoc(doc(db,'questions',answerQId), { answer, answered: true, answeredAt: serverTimestamp() });
+  closeModal('answerModal');
+};
+
+// ================================================================
+// CLIENT — DASHBOARD
+// ================================================================
+async function loadClientDashboard() {
+  const id = currentUser.id;
+  // Load plans
+  const planSnap = await getDoc(doc(db,'plans',id));
+  const plan = planSnap.exists() ? planSnap.data() : {};
+  document.getElementById('cWorkoutPlan').textContent = plan.workout || 'No workout plan assigned yet. Check back soon!';
+  document.getElementById('cDietPlan').textContent = plan.diet || 'No diet plan assigned yet. Check back soon!';
+  // Real-time logs
+  const logsQ = query(collection(db,'logs'), where('clientId','==',id));
+  const logsUnsub = onSnapshot(logsQ, snap => {
+    const logs = snap.docs.map(d=>d.data()).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+    renderClientLogs(logs);
+    renderClientStats(logs);
+  });
+  unsubscribers.push(logsUnsub);
+  // Real-time questions (to see replies)
+  const qQ = query(collection(db,'questions'), where('clientId','==',id));
+  const qUnsub = onSnapshot(qQ, snap => {
+    const qs = snap.docs.map(d=>({...d.data(),docId:d.id})).sort((a,b)=>(a.timestamp?.seconds||0)-(b.timestamp?.seconds||0));
+    renderClientQAs(qs);
+  });
+  unsubscribers.push(qUnsub);
+  // Real-time plan updates (so client sees plan changes immediately)
+  const planUnsub = onSnapshot(doc(db,'plans',id), snap => {
+    if (!snap.exists()) return;
+    const p = snap.data();
+    document.getElementById('cWorkoutPlan').textContent = p.workout || 'No workout plan assigned yet.';
+    document.getElementById('cDietPlan').textContent = p.diet || 'No diet plan assigned yet.';
+  });
+  unsubscribers.push(planUnsub);
+  // Videos
+  const vids = await getDocs(query(collection(db,'videos'), where('clientId','==',id)));
+  renderClientVideoList(vids.docs.map(d=>d.data()).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0)));
+  // Nutrition tab
+  renderNutritionUI('nutritionLookupUI');
+  // Meals
+  await loadClientMeals();
+}
+
+// ================================================================
+// CLIENT — LOG WORKOUT
+// ================================================================
+window.addLog = async function() {
+  const exercise = document.getElementById('logExercise').value.trim();
+  const sets = parseInt(document.getElementById('logSets').value);
+  const reps = parseInt(document.getElementById('logReps').value);
+  const weight = parseFloat(document.getElementById('logWeight').value);
+  if (!exercise || !sets || !reps || isNaN(weight)) return;
+  await addDoc(collection(db,'logs'), {
+    clientId: currentUser.id, clientName: currentUser.name,
+    date: new Date().toLocaleDateString('en-GB'),
+    exercise, sets, reps, weight, timestamp: serverTimestamp()
+  });
+  ['logExercise','logSets','logReps','logWeight'].forEach(i => document.getElementById(i).value='');
+  show('logSuccess');
+  setTimeout(() => hide('logSuccess'), 3000);
+};
+
+function renderClientLogs(logs) {
+  const el = document.getElementById('recentLogs');
+  if (!logs.length) { el.innerHTML='<div class="empty" style="padding:32px"><div class="empty-icon">🏋️</div>No entries yet. Log your first workout!</div>'; return; }
+  el.innerHTML=`<table class="table"><thead><tr><th>Date</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th></tr></thead><tbody>${logs.slice(-10).reverse().map(l=>`<tr><td style="color:var(--muted)">${l.date}</td><td style="font-weight:600">${esc(l.exercise)}</td><td>${l.sets}</td><td>${l.reps}</td><td><span class="hl">${l.weight} kg</span></td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderClientStats(logs) {
+  const totalSets = logs.reduce((s,l)=>s+l.sets,0);
+  const unique = new Set(logs.map(l=>l.exercise.toLowerCase())).size;
+  const { streak, longestStreak } = calcStreak(logs);
+  // Update streak banner on My Plan tab
+  renderStreakBanner(logs, 'clientStreakBanner');
+  document.getElementById('cStatGrid').innerHTML=`
+    <div class="stat-box"><div class="stat-val">${logs.length}</div><div class="stat-label">Sessions Logged</div></div>
+    <div class="stat-box"><div class="stat-val">${streak}🔥</div><div class="stat-label">Current Streak</div></div>
+    <div class="stat-box"><div class="stat-val">${totalSets}</div><div class="stat-label">Total Sets Done</div></div>
+    <div class="stat-box"><div class="stat-val">${longestStreak}</div><div class="stat-label">Best Streak</div></div>
+    <div class="stat-box"><div class="stat-val">${unique}</div><div class="stat-label">Exercises Tracked</div></div>`;
+  const allEl = document.getElementById('allLogsTable');
+  if (!logs.length) { allEl.innerHTML='<div class="empty" style="padding:32px">No logs yet.</div>'; return; }
+  allEl.innerHTML=`<table class="table"><thead><tr><th>Date</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th></tr></thead><tbody>${logs.slice().reverse().map(l=>`<tr><td style="color:var(--muted)">${l.date}</td><td style="font-weight:600">${esc(l.exercise)}</td><td>${l.sets}</td><td>${l.reps}</td><td><span class="hl">${l.weight} kg</span></td></tr>`).join('')}</tbody></table>`;
+}
+
+// ================================================================
+// CLIENT — ASK COACH
+// ================================================================
+window.submitQuestion = async function() {
+  const text = document.getElementById('questionText').value.trim();
+  if (!text) return;
+  await addDoc(collection(db,'questions'), {
+    clientId: currentUser.id, clientName: currentUser.name,
+    question: text, answer: '', answered: false,
+    date: new Date().toLocaleDateString('en-GB'), timestamp: serverTimestamp()
+  });
+  document.getElementById('questionText').value='';
+  show('qSuccess');
+  setTimeout(() => hide('qSuccess'), 3000);
+};
+
+function renderClientQAs(qs) {
+  const el = document.getElementById('clientQAs');
+  if (!qs.length) { el.innerHTML='<div class="empty"><div class="empty-icon">💬</div>No questions sent yet.</div>'; return; }
+  el.innerHTML = qs.slice().reverse().map(q=>`
+    <div class="q-item">
+      <div class="q-meta">${q.date}<span class="badge ${q.answered?'badge-answered':'badge-pending'}">${q.answered?'Answered':'Pending'}</span></div>
+      <div class="q-text">${esc(q.question)}</div>
+      ${q.answered?`<div class="q-answer"><strong>Coach Reply</strong>${esc(q.answer)}</div>`:'<div style="font-size:12px;color:var(--muted)">Awaiting reply...</div>'}
+    </div>`).join('');
+}
+
+// ================================================================
+// CLIENT — UPLOAD VIDEO
+// ================================================================
+window.uploadVideo = async function() {
+  const file = document.getElementById('videoFile').files[0];
+  const note = document.getElementById('videoNote').value.trim();
+  if (!file) { alert('Please select a video file first.'); return; }
+  await addDoc(collection(db,'videos'), {
+    clientId: currentUser.id, clientName: currentUser.name,
+    fileName: file.name, size: (file.size/1024/1024).toFixed(1)+' MB',
+    note, date: new Date().toLocaleDateString('en-GB'), timestamp: serverTimestamp()
+  });
+  document.getElementById('videoFile').value='';
+  document.getElementById('videoNote').value='';
+  show('videoSuccess');
+  setTimeout(() => hide('videoSuccess'), 3000);
+  const vids = await getDocs(query(collection(db,'videos'), where('clientId','==',currentUser.id)));
+  renderClientVideoList(vids.docs.map(d=>d.data()).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0)));
+};
+
+function renderClientVideoList(vids) {
+  const el = document.getElementById('clientVideoList');
+  if (!vids.length) { el.innerHTML=''; return; }
+  el.innerHTML=`<div class="card" style="margin-top:16px"><div class="card-title">Your Submitted Videos</div>${vids.map(v=>`<div class="video-item"><div class="video-thumb">🎬</div><div><div style="font-weight:600">${esc(v.fileName)}</div><div style="font-size:11px;color:var(--muted)">${v.date} · ${v.size}</div>${v.note?`<div style="font-size:13px;color:#bbb;margin-top:4px">${esc(v.note)}</div>`:''}</div></div>`).join('')}</div>`;
+}
+
+// ================================================================
+// UI HELPERS
+// ================================================================
+window.changePassword = async function() {
+  const current = document.getElementById('cpCurrent').value;
+  const newPass = document.getElementById('cpNew').value;
+  const confirm = document.getElementById('cpConfirm').value;
+  hide('cpError'); hide('cpSuccess');
+  if (!current || !newPass || !confirm) { showErr('cpError','All fields are required.'); return; }
+  if (current !== currentUser.password) { showErr('cpError','Current password is incorrect.'); return; }
+  if (newPass.length < 6) { showErr('cpError','New password must be at least 6 characters.'); return; }
+  if (newPass !== confirm) { showErr('cpError','New passwords do not match.'); return; }
+  await updateDoc(doc(db,'users', currentUser.id), { password: newPass });
+  currentUser.password = newPass;
+  show('cpSuccess');
+  document.getElementById('cpCurrent').value='';
+  document.getElementById('cpNew').value='';
+  document.getElementById('cpConfirm').value='';
+  setTimeout(() => { hide('cpSuccess'); closeModal('changePasswordModal'); }, 2000);
+};
+
+// ================================================================
+// TRAINER — DELETE CLIENT
+// ================================================================
+let clientToDelete = null;
+
+window.confirmDeleteClient = function(id, name) {
+  clientToDelete = id;
+  document.getElementById('deleteClientName').textContent = name;
+  hide('deleteClientErr');
+  openModal('deleteClientModal');
+};
+
+window.executeDeleteClient = async function() {
+  if (!clientToDelete) return;
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.textContent = 'Deleting...'; btn.disabled = true;
+  try {
+    // Delete all client data from Firestore
+    const collections = ['logs','questions','videos'];
+    for (const col of collections) {
+      const snap = await getDocs(query(collection(db, col), where('clientId','==', clientToDelete)));
+      for (const d of snap.docs) await deleteDoc(doc(db, col, d.id));
+    }
+    // Delete plan
+    try { await deleteDoc(doc(db,'plans', clientToDelete)); } catch(e) {}
+    // Delete user
+    await deleteDoc(doc(db,'users', clientToDelete));
+    // Reset view if deleted client was selected
+    if (selectedClientId === clientToDelete) {
+      selectedClientId = null;
+      document.getElementById('trainerTopTitle').textContent = 'Select a Client';
+      ['tOverview','tProgress','tPlans','tQA','tVideos','tNutrition'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div>Select a client from the sidebar</div>';
+      });
+      cleanupListeners();
+      listenClients();
+    }
+    clientToDelete = null;
+    closeModal('deleteClientModal');
+  } catch(e) {
+    showErr('deleteClientErr', 'Error deleting client. Try again.');
+  }
+  btn.textContent = 'Yes, Delete Permanently'; btn.disabled = false;
+};
+
+// ================================================================
+// NUTRITION LOOKUP — Open Food Facts API (free, no key needed)
+// ================================================================
+function renderNutritionUI(containerId) {
+  document.getElementById(containerId).innerHTML = `
+    <div class="card">
+      <div class="card-title">🥦 Food Nutrition Lookup</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Search any food and enter quantity to get macros instantly.</p>
+      <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:12px;align-items:flex-end;margin-bottom:16px">
+        <div class="form-group" style="margin:0">
+          <label>Food Name</label>
+          <input type="text" id="foodSearch_${containerId}" placeholder="e.g. chicken breast, banana, oats" onkeydown="if(event.key==='Enter') window.searchFood('${containerId}')">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Quantity (g)</label>
+          <input type="number" id="foodQty_${containerId}" placeholder="100" min="1" value="100">
+        </div>
+        <button class="btn btn-primary" onclick="window.searchFood('${containerId}')" style="height:44px;margin-top:20px">Search</button>
+      </div>
+      <div id="nutritionError_${containerId}" class="alert alert-error hidden"></div>
+      <div id="nutritionLoading_${containerId}" class="hidden" style="color:var(--muted);font-size:13px;padding:12px 0">🔍 Searching food database...</div>
+      <div id="nutritionResults_${containerId}"></div>
+    </div>
+    <div class="card" id="nutritionSelected_${containerId}" style="display:none">
+      <div class="card-title" id="nutritionSelectedTitle_${containerId}">Selected Food</div>
+      <div id="nutritionMacros_${containerId}"></div>
+    </div>
+  `;
+}
+
+window.searchFood = async function(containerId) {
+  const query_text = document.getElementById(`foodSearch_${containerId}`).value.trim();
+  const qty = parseFloat(document.getElementById(`foodQty_${containerId}`).value) || 100;
+  const errEl = document.getElementById(`nutritionError_${containerId}`);
+  const loadEl = document.getElementById(`nutritionLoading_${containerId}`);
+  const resultsEl = document.getElementById(`nutritionResults_${containerId}`);
+
+  if (!query_text) return;
+  hide(`nutritionError_${containerId}`);
+  resultsEl.innerHTML = '';
+  document.getElementById(`nutritionSelected_${containerId}`).style.display = 'none';
+  loadEl.classList.remove('hidden');
+
+  try {
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query_text)}&json=true&page_size=6&fields=product_name,nutriments,serving_size`;
+    const res = await fetch(url);
+    const data = await res.json();
+    loadEl.classList.add('hidden');
+
+    const products = (data.products || []).filter(p =>
+      p.product_name &&
+      p.nutriments &&
+      p.nutriments['energy-kcal_100g'] !== undefined
+    );
+
+    if (!products.length) {
+      errEl.textContent = 'No results found. Try a different food name.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    resultsEl.innerHTML = `
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Select a result below</div>
+      ${products.map((p, i) => {
+        const n = p.nutriments;
+        const kcal = ((n['energy-kcal_100g'] || 0) * qty / 100).toFixed(0);
+        const protein = ((n['proteins_100g'] || 0) * qty / 100).toFixed(1);
+        const carbs = ((n['carbohydrates_100g'] || 0) * qty / 100).toFixed(1);
+        const fat = ((n['fat_100g'] || 0) * qty / 100).toFixed(1);
+        return `
+          <div onclick="window.selectFood(${i}, '${containerId}', ${qty})"
+            style="padding:14px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;background:var(--surface2);transition:border-color 0.15s"
+            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-weight:600;margin-bottom:8px;font-size:13px">${esc(p.product_name)}</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <span style="font-size:12px"><span style="color:var(--accent);font-weight:700">${kcal}</span> <span style="color:var(--muted)">kcal</span></span>
+              <span style="font-size:12px"><span style="color:#4af;font-weight:700">${protein}g</span> <span style="color:var(--muted)">protein</span></span>
+              <span style="font-size:12px"><span style="color:#fa4;font-weight:700">${carbs}g</span> <span style="color:var(--muted)">carbs</span></span>
+              <span style="font-size:12px"><span style="color:#f84;font-weight:700">${fat}g</span> <span style="color:var(--muted)">fat</span></span>
+              <span style="font-size:11px;color:var(--muted)">per ${qty}g</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+    // Store products for selection
+    window._nutritionProducts = products;
+    window._nutritionQty = qty;
+  } catch(e) {
+    loadEl.classList.add('hidden');
+    errEl.textContent = 'Could not reach food database. Check your internet connection.';
+    errEl.classList.remove('hidden');
+  }
+};
+
+window.selectFood = function(idx, containerId, qty) {
+  const p = window._nutritionProducts[idx];
+  const n = p.nutriments;
+  const factor = qty / 100;
+  const kcal = ((n['energy-kcal_100g'] || 0) * factor).toFixed(0);
+  const protein = ((n['proteins_100g'] || 0) * factor).toFixed(1);
+  const carbs = ((n['carbohydrates_100g'] || 0) * factor).toFixed(1);
+  const fat = ((n['fat_100g'] || 0) * factor).toFixed(1);
+  const fiber = ((n['fiber_100g'] || 0) * factor).toFixed(1);
+  const sugar = ((n['sugars_100g'] || 0) * factor).toFixed(1);
+  const salt = ((n['salt_100g'] || 0) * factor).toFixed(2);
+
+  const card = document.getElementById(`nutritionSelected_${containerId}`);
+  document.getElementById(`nutritionSelectedTitle_${containerId}`).textContent = `📊 ${p.product_name} — ${qty}g`;
+  document.getElementById(`nutritionMacros_${containerId}`).innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:var(--bg);border:1px solid var(--border);padding:18px;text-align:center">
+        <div style="font-size:32px;font-weight:900;color:var(--accent);letter-spacing:-2px">${kcal}</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:6px">Calories</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);padding:18px;text-align:center">
+        <div style="font-size:32px;font-weight:900;color:#4af;letter-spacing:-2px">${protein}g</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:6px">Protein</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);padding:18px;text-align:center">
+        <div style="font-size:32px;font-weight:900;color:#fa4;letter-spacing:-2px">${carbs}g</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:6px">Carbs</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);padding:18px;text-align:center">
+        <div style="font-size:32px;font-weight:900;color:#f84;letter-spacing:-2px">${fat}g</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:6px">Fat</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div style="padding:12px 16px;background:var(--surface2);border:1px solid var(--border);font-size:13px">
+        <span style="color:var(--muted)">Fiber: </span><strong>${fiber}g</strong>
+      </div>
+      <div style="padding:12px 16px;background:var(--surface2);border:1px solid var(--border);font-size:13px">
+        <span style="color:var(--muted)">Sugar: </span><strong>${sugar}g</strong>
+      </div>
+      <div style="padding:12px 16px;background:var(--surface2);border:1px solid var(--border);font-size:13px">
+        <span style="color:var(--muted)">Salt: </span><strong>${salt}g</strong>
+      </div>
+    </div>
+    <div style="margin-top:14px;font-size:11px;color:var(--muted)">Source: Open Food Facts · Values per ${qty}g serving</div>
+  `;
+  card.style.display = 'block';
+};
+
+// ================================================================
+// STREAK CALCULATION
+// ================================================================
+function calcStreak(logs) {
+  if (!logs.length) return { streak: 0, longestStreak: 0, activeDays: [] };
+  // Get unique dates logged
+  const dates = [...new Set(logs.map(l => l.date))].sort((a, b) => {
+    const [da,ma,ya] = a.split('/').map(Number);
+    const [db,mb,yb] = b.split('/').map(Number);
+    return new Date(ya,ma-1,da) - new Date(yb,mb-1,db);
+  });
+  const today = new Date(); today.setHours(0,0,0,0);
+  // Convert dd/mm/yyyy strings to Date objects
+  const datObjs = dates.map(d => {
+    const [dd,mm,yyyy] = d.split('/').map(Number);
+    return new Date(yyyy, mm-1, dd);
+  });
+  // Calculate current streak (counting backwards from today)
+  let streak = 0;
+  let check = new Date(today);
+  // Allow today OR yesterday as starting point
+  const lastLog = datObjs[datObjs.length - 1];
+  const diffToday = Math.floor((today - lastLog) / 86400000);
+  if (diffToday > 1) return { streak: 0, longestStreak: calcLongest(datObjs), activeDays: dates };
+  check = new Date(lastLog);
+  for (let i = datObjs.length - 1; i >= 0; i--) {
+    const diff = Math.floor((check - datObjs[i]) / 86400000);
+    if (diff === 0) { streak++; check.setDate(check.getDate() - 1); }
+    else if (diff > 1) break;
+  }
+  return { streak, longestStreak: calcLongest(datObjs), activeDays: dates };
+}
+
+function calcLongest(datObjs) {
+  if (!datObjs.length) return 0;
+  let longest = 1, current = 1;
+  for (let i = 1; i < datObjs.length; i++) {
+    const diff = Math.floor((datObjs[i] - datObjs[i-1]) / 86400000);
+    if (diff === 1) { current++; longest = Math.max(longest, current); }
+    else if (diff > 1) current = 1;
+  }
+  return longest;
+}
+
+function getStreakMessage(streak) {
+  if (streak === 0) return "Log a workout today to start your streak! 💪";
+  if (streak === 1) return "Great start! Come back tomorrow to keep it going.";
+  if (streak < 5) return `${streak} days strong! You're building a habit.`;
+  if (streak < 10) return `🔥 ${streak} days! You're on fire — don't stop now!`;
+  if (streak < 20) return `🔥🔥 ${streak} days! Incredible consistency!`;
+  return `🔥🔥🔥 ${streak} days! You're an absolute machine!`;
+}
+
+function renderStreakBanner(logs, containerId) {
+  const { streak, longestStreak, activeDays } = calcStreak(logs);
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  // Last 7 days calendar
+  const days7 = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
+    const str = d.toLocaleDateString('en-GB');
+    const isToday = i === 0;
+    const done = activeDays.includes(str);
+    days7.push({ label: ['S','M','T','W','T','F','S'][d.getDay()], done, isToday });
+  }
+  el.innerHTML = `
+    <div class="streak-banner">
+      <div class="streak-fire">${streak > 0 ? '🔥' : '💤'}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <div class="${streak > 0 ? 'streak-number' : 'streak-zero'}">${streak}</div>
+          <div>
+            <div style="font-size:15px;font-weight:700">Day Streak</div>
+            <div class="streak-label">Longest: ${longestStreak} days</div>
+          </div>
+        </div>
+        <div class="streak-msg">${getStreakMessage(streak)}</div>
+        <div class="streak-days">
+          ${days7.map(d=>`<div class="streak-day ${d.done?'done':''} ${d.isToday&&!d.done?'today':''}">
+            <span>${d.label}</span>
+            <span>${d.done?'✓':d.isToday?'·':'–'}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="text-align:center;padding:16px;border:1px solid var(--border);min-width:80px">
+        <div style="font-size:28px;font-weight:900;color:var(--accent)">${longestStreak}</div>
+        <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:4px">Best Ever</div>
+      </div>
+    </div>`;
+}
+
+// ================================================================
+// EMAIL REMINDER (mailto: based — no backend needed)
+// ================================================================
+window.sendReminder = function(clientName, clientEmail) {
+  if (!clientEmail) { alert('No email saved for this client. Edit their profile to add one.'); return; }
+  const subject = encodeURIComponent('FORGE — Time to Train! 💪');
+  const body = encodeURIComponent(`Hey ${clientName}!\n\nJust a reminder to log your workout today and keep your streak alive! 🔥\n\nOpen your FORGE app here:\nhttps://rajoriajde-commits.github.io/Forge\n\nLet's get it! 💪\n\n— Your Coach`);
+  window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`);
+};
+
+window.switchTab = function(el, id) {
+  document.querySelectorAll('#trainerTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#trainerView .tab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(id).classList.add('active');
+};
+
+window.switchClientTab = function(el, id) {
+  document.querySelectorAll('#clientTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#clientView .tab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(id).classList.add('active');
+};
+
+window.openModal = function(id) { document.getElementById(id).classList.remove('hidden'); };
+window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); };
+
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+function showErr(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.classList.remove('hidden'); }
+
+function showLoading(msg='Loading...') {
+  document.getElementById('loadingText').textContent = msg;
+  show('loadingOverlay');
+}
+function hideLoading() { hide('loadingOverlay'); }
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); });
+});
+
+// ================================================================
+// MEAL LOGGING — AI PHOTO ANALYSIS
+// ================================================================
+let pendingMealData = null; // holds AI result before confirming
+
+window.previewMealPhoto = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('mealPreviewImg').src = e.target.result;
+    document.getElementById('mealPhotoPreview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+};
+
+window.analyzeMealPhoto = async function() {
+  const fileInput = document.getElementById('mealPhotoInput');
+  const mealName = document.getElementById('mealNameInput').value.trim();
+  const notes = document.getElementById('mealNotesInput').value.trim();
+  const file = fileInput.files[0];
+
+  if (!file) { alert('Please select a food photo first.'); return; }
+
+  // Show analyzing state
+  document.getElementById('mealAnalyzeBtn').disabled = true;
+  document.getElementById('mealAnalyzing').classList.remove('hidden');
+  document.getElementById('mealAIResult').classList.add('hidden');
+
+  // Convert image to base64
+  const base64 = await new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = e => res(e.target.result.split(',')[1]);
+    reader.readAsDataURL(file);
+  });
+
+  const mediaType = file.type || 'image/jpeg';
+
+  const prompt = `You are a nutrition expert. Analyze this food photo${mealName ? ` (described as: ${mealName})` : ''}${notes ? ` (notes: ${notes})` : ''}.
+
+Identify all foods visible and estimate macros. Respond ONLY with valid JSON like this:
+{
+  "mealName": "Chicken Rice Bowl",
+  "items": [
+    {"name": "Grilled Chicken Breast", "amount": "150g", "calories": 165, "protein": 31, "carbs": 0, "fat": 3.6},
+    {"name": "White Rice", "amount": "200g cooked", "calories": 260, "protein": 4.8, "carbs": 57, "fat": 0.4}
+  ],
+  "totals": {"calories": 425, "protein": 35.8, "carbs": 57, "fat": 4},
+  "confidence": "medium",
+  "notes": "Estimates based on visible portion sizes"
+}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const raw = data.content?.[0]?.text || '';
+    // Extract JSON from response
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Could not parse AI response');
+    const result = JSON.parse(jsonMatch[0]);
+
+    pendingMealData = {
+      ...result,
+      photoBase64: base64,
+      mediaType,
+      mealNameOverride: mealName || result.mealName,
+      userNotes: notes,
+      date: new Date().toLocaleDateString('en-GB'),
+      time: new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'})
+    };
+
+    // Render result
+    document.getElementById('mealResultContent').innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:14px">${esc(result.mealName)}</div>
+      <div class="macro-grid">
+        <div class="macro-pill"><div class="macro-pill-val">${result.totals.calories}</div><div class="macro-pill-label">Calories</div></div>
+        <div class="macro-pill"><div class="macro-pill-val" style="color:#4db8ff">${result.totals.protein}g</div><div class="macro-pill-label">Protein</div></div>
+        <div class="macro-pill"><div class="macro-pill-val" style="color:#ff9944">${result.totals.carbs}g</div><div class="macro-pill-label">Carbs</div></div>
+        <div class="macro-pill"><div class="macro-pill-val" style="color:#cc88ff">${result.totals.fat}g</div><div class="macro-pill-label">Fat</div></div>
+      </div>
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Breakdown</div>
+      ${result.items.map(item => `
+        <div class="ai-food-item">
+          <div>
+            <div style="font-weight:600">${esc(item.name)}</div>
+            <div style="font-size:11px;color:var(--muted)">${esc(item.amount)}</div>
+          </div>
+          <div style="text-align:right;font-size:12px">
+            <span style="color:var(--accent)">${item.calories} kcal</span>
+            <span style="color:var(--muted);margin-left:8px">P:${item.protein}g C:${item.carbs}g F:${item.fat}g</span>
+          </div>
+        </div>`).join('')}
+      <div style="margin-top:10px;font-size:11px;color:var(--muted)">⚡ Confidence: ${result.confidence} · ${esc(result.notes||'')}</div>
+    `;
+    document.getElementById('mealAIResult').classList.remove('hidden');
+
+  } catch(e) {
+    alert('AI analysis failed: ' + e.message + '. Please try again.');
+  } finally {
+    document.getElementById('mealAnalyzing').classList.add('hidden');
+    document.getElementById('mealAnalyzeBtn').disabled = false;
+  }
+};
+
+window.confirmLogMeal = async function() {
+  if (!pendingMealData || !currentUser) return;
+  await addDoc(collection(db, 'meals'), {
+    clientId: currentUser.id,
+    clientName: currentUser.name,
+    mealName: pendingMealData.mealNameOverride || pendingMealData.mealName,
+    items: pendingMealData.items,
+    totals: pendingMealData.totals,
+    photoBase64: pendingMealData.photoBase64,
+    mediaType: pendingMealData.mediaType,
+    userNotes: pendingMealData.userNotes,
+    date: pendingMealData.date,
+    time: pendingMealData.time,
+    timestamp: serverTimestamp()
+  });
+  pendingMealData = null;
+  window.resetMealForm();
+  await loadClientMeals();
+  // Show success
+  const btn = document.getElementById('mealAnalyzeBtn');
+  btn.textContent = '✓ Meal Logged!';
+  btn.style.background = 'var(--success)';
+  setTimeout(() => { btn.textContent = '🤖 Analyze with AI →'; btn.style.background = ''; }, 3000);
+};
+
+window.resetMealForm = function() {
+  document.getElementById('mealPhotoInput').value = '';
+  document.getElementById('mealNameInput').value = '';
+  document.getElementById('mealNotesInput').value = '';
+  document.getElementById('mealPhotoPreview').style.display = 'none';
+  document.getElementById('mealAIResult').classList.add('hidden');
+  pendingMealData = null;
+};
+
+async function loadClientMeals() {
+  const snap = await getDocs(query(collection(db,'meals'), where('clientId','==',currentUser.id)));
+  const meals = snap.docs.map(d=>({...d.data(), docId:d.id}))
+    .sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+
+  const today = new Date().toLocaleDateString('en-GB');
+  const todayMeals = meals.filter(m => m.date === today);
+  const pastMeals = meals.filter(m => m.date !== today);
+
+  // Daily summary
+  const totCal = todayMeals.reduce((s,m)=>s+(m.totals?.calories||0),0);
+  const totPro = todayMeals.reduce((s,m)=>s+(m.totals?.protein||0),0);
+  const totCarb = todayMeals.reduce((s,m)=>s+(m.totals?.carbs||0),0);
+  const totFat = todayMeals.reduce((s,m)=>s+(m.totals?.fat||0),0);
+
+  document.getElementById('mealDailySummary').innerHTML = `
+    <div class="daily-summary-bar" style="margin-bottom:16px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Today's Totals — ${today}</div>
+      <div class="macro-grid">
+        <div class="macro-pill"><div class="macro-pill-val">${totCal}</div><div class="macro-pill-label">Calories</div></div>
+        <div class="macro-pill"><div class="macro-pill-val" style="color:#4db8ff">${Math.round(totPro)}g</div><div class="macro-pill-label">Protein</div></div>
+        <div class="macro-pill"><div class="macro-pill-val" style="color:#ff9944">${Math.round(totCarb)}g</div><div class="macro-pill-label">Carbs</div></div>
+        <div class="macro-pill"><div class="macro-pill-val" style="color:#cc88ff">${Math.round(totFat)}g</div><div class="macro-pill-label">Fat</div></div>
+      </div>
+    </div>`;
+
+  // Today's meals
+  const todayEl = document.getElementById('todaysMealsList');
+  todayEl.innerHTML = todayMeals.length ? todayMeals.map(m => renderMealItem(m)).join('') :
+    '<div style="color:var(--muted);font-size:13px;padding:16px 0">No meals logged today yet.</div>';
+
+  // Past meals
+  const pastEl = document.getElementById('pastMealsList');
+  pastEl.innerHTML = pastMeals.length ? pastMeals.map(m => renderMealItem(m)).join('') :
+    '<div style="color:var(--muted);font-size:13px;padding:16px 0">No past meals.</div>';
+}
+
+function renderMealItem(m) {
+  const thumb = m.photoBase64
+    ? `<img class="meal-thumb" src="data:${m.mediaType};base64,${m.photoBase64}" />`
+    : `<div class="meal-thumb-placeholder">🍽</div>`;
+  return `
+    <div class="meal-item">
+      ${thumb}
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${esc(m.mealName||'Meal')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${m.date} · ${m.time||''}</div>
+        <div class="meal-macros">
+          <span class="meal-macro-tag">🔥 ${m.totals?.calories||0} kcal</span>
+          <span class="meal-macro-tag" style="color:#4db8ff">P: ${m.totals?.protein||0}g</span>
+          <span class="meal-macro-tag" style="color:#ff9944">C: ${m.totals?.carbs||0}g</span>
+          <span class="meal-macro-tag" style="color:#cc88ff">F: ${m.totals?.fat||0}g</span>
+        </div>
+        ${m.userNotes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">${esc(m.userNotes)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+window.togglePastMeals = function() {
+  const el = document.getElementById('pastMealsList');
+  const toggle = document.getElementById('pastMealsToggle');
+  if (el.classList.contains('hidden')) {
+    el.classList.remove('hidden'); toggle.textContent = '▲ Hide';
+  } else {
+    el.classList.add('hidden'); toggle.textContent = '▼ Show';
+  }
+};
+
+// Trainer: render client meals
+async function loadTMeals(clientId) {
+  const snap = await getDocs(query(collection(db,'meals'), where('clientId','==',clientId)));
+  const meals = snap.docs.map(d=>d.data()).sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+
+  if (!meals.length) {
+    document.getElementById('tMeals').innerHTML = '<div class="empty"><div class="empty-icon">🍽</div>No meals logged yet by this client.</div>';
+    return;
+  }
+
+  // Group by date
+  const byDate = {};
+  meals.forEach(m => { if (!byDate[m.date]) byDate[m.date] = []; byDate[m.date].push(m); });
+
+  document.getElementById('tMeals').innerHTML = Object.entries(byDate).map(([date, dayMeals]) => {
+    const totCal = dayMeals.reduce((s,m)=>s+(m.totals?.calories||0),0);
+    const totPro = dayMeals.reduce((s,m)=>s+(m.totals?.protein||0),0);
+    const totCarb = dayMeals.reduce((s,m)=>s+(m.totals?.carbs||0),0);
+    const totFat = dayMeals.reduce((s,m)=>s+(m.totals?.fat||0),0);
+    return `
+      <div class="card">
+        <div class="card-title">
+          <span>${date}</span>
+          <span style="color:var(--text);font-size:12px">
+            🔥 ${totCal} kcal &nbsp; P:${Math.round(totPro)}g &nbsp; C:${Math.round(totCarb)}g &nbsp; F:${Math.round(totFat)}g
+          </span>
+        </div>
+        ${dayMeals.map(m => renderMealItem(m)).join('')}
+      </div>`;
+  }).join('');
+}
+
+// ================================================================
+// BOOT
+// ================================================================
+tryAutoConnect();
+</script>
+</body>
+</html>
